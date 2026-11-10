@@ -1,0 +1,5 @@
+data/reservations.json
+data/*.corrompido-*.json
+data/*.tmp
+node_modules/
+.tools/

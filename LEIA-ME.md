@@ -33,7 +33,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 **Quem pode cancelar:** somente o morador que fez a reserva. A interface esconde o botão para os demais, e o banco também bloqueia a operação.
 
-**Meu perfil:** no cabeçalho, o botão **Perfil** abre os dados do morador (nome, nº do apartamento, bloco e telefone). É possível editar, salvar e, se quiser, excluir a própria conta — a exclusão apaga perfil, reservas e o usuário do Auth.
+**Meu perfil:** no cabeçalho, o botão **Perfil** abre os dados do morador (nome, nº do apartamento, bloco e telefone). É possível editar, salvar e, se quiser, excluir a própria conta — a exclusão apaga perfil, reservas e o usuário do Auth. Ao abrir uma nova reserva, esses dados são preenchidos automaticamente.
 
 **Privacidade:** nomes e apartamentos são visíveis apenas para usuários logados.
 
@@ -46,6 +46,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
 - Clique em um dia livre para reservar (apartamento, telefone opcional, nº de pessoas e observações).
+- O formulário de reserva carrega automaticamente nome, apartamento, bloco e telefone do perfil.
 - Clique em um dia reservado para ver os detalhes.
 - Cancelamento apenas das próprias reservas.
 - Datas passadas não podem ser reservadas.

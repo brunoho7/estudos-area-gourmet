@@ -28,6 +28,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
 - Uma reserva por dia; datas passadas bloqueadas.
+- Ao abrir uma reserva, nome, apartamento, bloco e telefone são carregados do perfil do morador.
 - O nome exibido na reserva vem do perfil do usuário logado.
 - Layout responsivo e atualização automática a cada 60 segundos.
 

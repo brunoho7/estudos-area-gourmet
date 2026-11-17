@@ -1,7 +1,7 @@
 # Área Gourmet · Reservas do Condomínio
 
 Aplicativo web para os moradores reservarem e cancelarem o uso da área gourmet.
-Todos veem no calendário quais dias estão reservados e quem reservou.
+O acesso é restrito a usuários cadastrados, com **e-mail, nome e senha**.
 
 Esta pasta está em:
 
@@ -13,79 +13,67 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 ## Versão publicada na web
 
-O aplicativo está no ar em:
-
 **https://brunoho7.github.io/estudos-area-gourmet/**
 
-As reservas ficam no Supabase e são compartilhadas por todos que abrem o link. Não é preciso deixar nenhum computador ligado. O código fica em **https://github.com/brunoho7/estudos-area-gourmet** (branch `main`; o GitHub Pages publica automaticamente a cada envio).
+- Código: **https://github.com/brunoho7/estudos-area-gourmet**
+- Banco e autenticação: **Supabase**
+- O site fica no **GitHub Pages**; não é preciso deixar nenhum computador ligado.
 
 ---
 
-## Como usar localmente
+## Acesso ao aplicativo
 
-Para o dia a dia, use o link publicado. As opções abaixo servem para rodar o app no seu computador.
+1. Ao abrir o site, aparece a tela **Entrar / Criar conta**.
+2. Quem ainda não tem conta clica em **Criar conta** e informa:
+   - nome completo;
+   - e-mail;
+   - senha (mínimo 6 caracteres, repetida para confirmação).
+3. O Supabase envia um **e-mail de confirmação**. Depois de confirmar, basta entrar com e-mail e senha.
+4. Sem login, o calendário não é carregado — só a tela de acesso aparece.
 
-### Opção 1 — Servidor local compartilhado (alternativa)
+**Quem pode cancelar:** somente o morador que fez a reserva. A interface esconde o botão para os demais, e o banco também bloqueia a operação.
 
-1. Dê **duplo clique em `iniciar.bat`**.
-2. O navegador abre em `http://localhost:3000`.
-3. A janela preta que ficar aberta é o servidor. **Não feche enquanto estiver usando.**
-4. Para os outros moradores acessarem, use o endereço de rede que aparece na janela, por exemplo:
-
-   ```
-   Na rede:  http://192.168.0.10:3000
-   ```
-
-   Todos precisam estar no **mesmo Wi-Fi/rede** e o computador do servidor precisa estar ligado.
-   Na primeira execução o Windows pode pedir para liberar o Node.js no firewall — permita em **redes privadas**.
-
-Assim, as reservas ficam salvas em um único arquivo (`data/reservations.json`) e todo mundo vê o mesmo calendário.
-
-### Opção 2 — Sem instalar nada (modo local)
-
-Dê **duplo clique em `index.html`**. O app funciona, mas as reservas ficam salvas **somente neste navegador/computador** e não são compartilhadas. Serve para testar ou para uso em um único dispositivo.
-
-> O `iniciar.bat` procura o Node.js instalado no computador. Neste computador ele também consegue usar o runtime Node.js que acompanha o DeepSeek Harness, então deve funcionar sem instalação extra. Se não funcionar, instale o Node.js LTS em <https://nodejs.org> e tente de novo.
+**Privacidade:** nomes e apartamentos são visíveis apenas para usuários logados.
 
 ---
 
 ## O que o aplicativo faz
 
+- Cadastro, confirmação de e-mail e login.
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
-- Clique em um dia livre para reservar (nome, apartamento, telefone opcional, nº de pessoas e observações).
+- Clique em um dia livre para reservar (apartamento, telefone opcional, nº de pessoas e observações).
 - Clique em um dia reservado para ver os detalhes.
-- Cancelamento mediante confirmação do **nome e apartamento** usados na reserva.
+- Cancelamento apenas das próprias reservas.
 - Datas passadas não podem ser reservadas.
 - Cada dia aceita **uma** reserva.
-- Atualização automática do calendário a cada 60 segundos (modo compartilhado).
+- Atualização automática do calendário a cada 60 segundos.
 - Layout responsivo (funciona no celular).
 
 ---
 
 ## Onde ficam os dados
 
-| Modo | Onde fica |
+| Onde | O que fica |
 | --- | --- |
-| Publicado (GitHub Pages) | Supabase — tabela `public.reservations` |
-| Servidor local (`iniciar.bat`) | `data/reservations.json` |
-| Local (`index.html`) | Armazenamento do próprio navegador (localStorage) |
+| Supabase → `auth.users` | Contas (e-mail e senha criptografada) |
+| Supabase → `public.profiles` | Nome e e-mail de cada morador |
+| Supabase → `public.reservations` | Reservas, vinculadas ao usuário (`user_id`) |
+| `data/reservations.json` | Apenas o servidor local opcional (`server.js`) |
 
-**Backup:** no modo publicado, use os backups do painel do Supabase (Database → Backups). No modo local, com o servidor parado, copie o arquivo `data/reservations.json` para outro lugar.
-
-No modo publicado não existe arquivo local de reservas; o `data/reservations.json` é usado apenas pelo servidor Node.
+**Backup:** use o painel do Supabase (Database → Backups). O arquivo local `data/reservations.json` não é usado pela versão publicada.
 
 ---
 
 ## Regras e limites atuais
 
-- Não há login nem senha: o cancelamento é validado pelo nome + apartamento informados. Quem souber esses dados pode cancelar uma reserva. Para um controle mais rígido, o próximo passo seria criar login de morador e/ou uma senha de administração.
-- Os nomes e apartamentos ficam visíveis para todos que acessam o endereço.
-- Limite de **40 pessoas** por reserva (pode ser alterado no código).
-- Sem controle de horário: a reserva é para o dia inteiro. Se precisar de períodos (almoço/jantar), é possível evoluir.
-- O servidor local precisa estar ligado para o modo compartilhado por rede funcionar. Na versão publicada, não.
-- A versão publicada funciona pela internet; o modo local (`iniciar.bat`) atende apenas a mesma rede Wi-Fi.
-- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel do Supabase.
+- O cadastro está **aberto**: qualquer pessoa com o link pode criar uma conta. Para permitir somente moradores, desative **Authentication → Providers → Email → Allow new users to sign up** no Supabase, ou peça uma aprovação de cadastro.
+- A confirmação de e-mail verifica que a pessoa tem acesso àquele e-mail, mas não que ela mora no condomínio.
+- Não há recuperação de senha na interface. Se um morador esquecer a senha, o síndico pode redefini-la em **Authentication → Users**.
+- Não há painel de administração nem aprovação de reservas.
+- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
+- Limite de **40 pessoas** por reserva.
+- Sem controle de horário: a reserva é para o dia inteiro.
 
 ---
 
@@ -93,33 +81,32 @@ No modo publicado não existe arquivo local de reservas; o `data/reservations.js
 
 ```
 agendamento-area-gourmet/
-├── index.html              Interface (calendário, modais, textos)
-├── config.js               URL + chave publishable do Supabase
+├── index.html                  Interface, tela de acesso e calendário
+├── config.js                   URL + chave publishable do Supabase
 ├── assets/
-│   ├── styles.css          Visual do aplicativo
-│   └── app.js              Lógica do calendário, reservas e cancelamentos
+│   ├── styles.css              Visual do aplicativo
+│   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
+│   └── vendor/supabase.js      Biblioteca oficial do Supabase
 ├── supabase/
-│   └── schema.sql          Tabela, RLS e funções do banco
-├── server.js               Servidor local + API (sem dependências externas)
-├── iniciar.bat             Atalho para iniciar o servidor local
-├── package.json            Metadados e comando "npm start"
-├── README.md               Visão geral para o GitHub
-├── LEIA-ME.md              Este arquivo
+│   └── schema.sql              Tabelas, perfis, RLS e funções
+├── server.js                   Servidor local opcional (Node)
+├── iniciar.bat                 Atalho do servidor local no Windows
+├── README.md                   Visão geral para o GitHub
+├── LEIA-ME.md                  Este arquivo
 └── data/
-    └── reservations.json   Reservas do servidor local (criado automaticamente)
+    └── reservations.json       Dados do servidor local (não usado na web)
 ```
 
 ---
 
 ## Personalização rápida
 
-- **Nome do condomínio / título:** edite o cabeçalho em `index.html`.
-- **Regras exibidas no site:** edite a seção “Como funciona” em `index.html`.
-- **Cores e fontes:** edite as variáveis no início de `assets/styles.css` (`:root`).
-- **Limite de pessoas:** ajuste `MAX_GUESTS` em `assets/app.js`, em `server.js` e em `supabase/schema.sql` (os três precisam ficar iguais).
-- **Regras de validação:** além do `server.js`, ajuste as funções em `supabase/schema.sql` e execute o SQL novamente.
-- **Porta do servidor:** execute `set PORT=8080` antes de `node server.js` ou acrescente essa linha no `iniciar.bat`.
-- **Horário de funcionamento / regras de uso:** podem ser incluídos no formulário e nas validações do `server.js` e do schema do Supabase.
+- **Nome do condomínio / título:** edite o cabeçalho e a tela de acesso em `index.html`.
+- **Regras exibidas:** edite a seção “Como funciona” em `index.html`.
+- **Cores e fontes:** variáveis no início de `assets/styles.css` (`:root`).
+- **Limite de pessoas:** ajuste `MAX_GUESTS` em `assets/app.js` e em `supabase/schema.sql` (e execute o SQL de novo).
+- **Cadastro fechado:** Supabase → Authentication → Providers → Email → desmarque “Allow new users to sign up”.
+- **Domínio próprio:** GitHub Pages permite configurar um domínio; depois atualize a Site URL no Supabase.
 
 ---
 
@@ -127,20 +114,29 @@ agendamento-area-gourmet/
 
 | Problema | Solução |
 | --- | --- |
-| “Node.js nao foi encontrado” | Instale o Node.js LTS em <https://nodejs.org> e execute o `iniciar.bat` de novo. |
-| “A porta 3000 ja esta em uso” | Feche o outro programa ou use `set PORT=3001` antes de iniciar. |
-| Outros moradores não acessam o servidor local | Confirme o IP mostrado na janela, se estão no mesmo Wi-Fi e se o firewall liberou o Node.js em redes privadas. |
-| Site publicado abre em “Modo local” | Confira se o `config.js` tem a URL e a chave publishable do Supabase e recarregue a página sem cache. |
-| Site publicado não mostra as reservas | O projeto do Supabase pode estar pausado ou o `supabase/schema.sql` não foi executado. Verifique no painel do Supabase. |
-| Calendário local não atualiza | Verifique se a janela do servidor continua aberta. |
-| Abri o `index.html` e ninguém vê minha reserva | Isso é o modo local. Use o link publicado para compartilhar. |
+| “Confirme seu e-mail antes de entrar” | Abra o link enviado pelo Supabase (verifique spam). O e-mail pode demorar alguns minutos. |
+| E-mail de confirmação não chega | Confirme a Site URL em Authentication → URL Configuration; o plano gratuito do Supabase tem limite de envios por hora. |
+| “E-mail ou senha incorretos” | Confira a senha; o síndico pode redefini-la em Authentication → Users. |
+| “Este e-mail já está cadastrado” | Use **Entrar** ou recupere a senha pelo painel do Supabase. |
+| Site publicado abre em “Modo local” | O `config.js` está vazio ou a página foi aberta como arquivo (`file://`). Use o link publicado. |
+| Calendário vazio para todos | Verifique se o projeto do Supabase está ativo (não pausado). |
+| Morador não consegue cancelar | Só o dono da reserva pode cancelar; confirme se ele está na conta correta. |
+
+---
+
+## Versão local (opcional)
+
+A versão oficial é a publicada. Para testar a interface sem nuvem, abra `index.html` direto no navegador: ele usa o armazenamento local e não acessa o banco compartilhado.
+
+O `iniciar.bat`/`server.js` servem a mesma versão web (com login) quando o `config.js` está preenchido; servem para desenvolvimento, não são necessários para os moradores.
 
 ---
 
 ## Próximos passos possíveis
 
-- Login de moradores e painel do síndico.
+- Aprovação de cadastro pelo síndico.
+- Recuperação de senha (“Esqueci minha senha”).
+- Painel do síndico para gerenciar moradores e reservas.
 - Reserva por período (almoço, jantar, dia inteiro).
-- Aprovação de reservas e lista de espera.
 - Notificações por e-mail/WhatsApp.
-- Domínio próprio no lugar do endereço `github.io`.
+- Domínio próprio.

@@ -1,47 +1,67 @@
 # Área Gourmet · Reservas do Condomínio
 
 Aplicativo web para moradores reservarem e cancelarem a área gourmet do condomínio.
-Todos veem no calendário os dias reservados e quem reservou.
+O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e senha**, e só quem está logado vê o calendário.
 
 ## Versão publicada
 
-O site fica no **GitHub Pages** e as reservas são compartilhadas pelo **Supabase**:
-
 - **Site:** https://brunoho7.github.io/estudos-area-gourmet/
 - **Código:** https://github.com/brunoho7/estudos-area-gourmet
-- **Banco:** Supabase (tabela `public.reservations` + funções `create_reservation` e `cancel_reservation`)
+- **Banco:** Supabase/PostgreSQL (`reservations`, `profiles`)
+- **Autenticação:** Supabase Auth (e-mail + senha), com confirmação de e-mail
+
+## Acesso e segurança
+
+- Cadastro com **nome, e-mail e senha**; o e-mail precisa ser confirmado.
+- Sem login, o aplicativo mostra apenas a tela de acesso — o calendário não é carregado.
+- As reservas ficam visíveis somente para usuários autenticados.
+- Cada morador pode cancelar **apenas as próprias reservas**.
+- O banco usa RLS: leitura liberada para `authenticated`; criação/cancelamento apenas pelas funções SQL; anônimo não lê nem grava.
+- A chave `publishable` (ou `anon`) é pública por design. **Nunca** coloque a chave `service_role` no site.
 
 ## Como funciona
 
+- Login, cadastro e confirmação de e-mail.
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
 - Uma reserva por dia; datas passadas bloqueadas.
-- Cancelamento somente com o nome + apartamento usados na reserva.
+- O nome exibido na reserva vem do perfil do usuário logado.
 - Layout responsivo e atualização automática a cada 60 segundos.
 
 ## Tecnologia
 
 - **Front-end:** HTML, CSS e JavaScript puro (sem build).
-- **Banco:** Supabase/PostgreSQL com RLS; escrita apenas por funções `security definer`.
+- **Autenticação e banco:** Supabase (Auth + PostgreSQL com RLS).
 - **Hospedagem:** GitHub Pages.
-- **Servidor local opcional:** `server.js` (Node.js, sem dependências) para uso offline/Docker.
+- **Servidor local opcional:** `server.js` (Node.js, sem dependências) para desenvolvimento/offline.
 
-A chave `publishable` (ou `anon public`) do Supabase é pública por design. Quem protege os dados são as políticas de RLS e as funções SQL em [`supabase/schema.sql`](supabase/schema.sql). Nunca coloque a chave `service_role` no site.
+## Estrutura
 
-## Rodar localmente
-
-1. Instale o Node.js LTS.
-2. Dê duplo clique em `iniciar.bat` (Windows) ou execute `node server.js`.
-3. Abra `http://localhost:3000`.
-
-Sem Node, abra `index.html` direto: o app funciona em modo local (dados só naquele navegador).
+```
+.
+├── index.html                  Interface, tela de acesso e calendário
+├── config.js                   URL + chave publishable do Supabase
+├── assets/
+│   ├── styles.css              Visual
+│   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
+│   └── vendor/supabase.js      Biblioteca oficial do Supabase (v2)
+├── supabase/
+│   └── schema.sql              Tabelas, perfis, RLS e funções
+├── server.js                   Servidor local opcional (Node)
+├── iniciar.bat                 Atalho do servidor local no Windows
+├── LEIA-ME.md                  Manual completo em português
+└── package.json
+```
 
 ## Configurar o Supabase
 
 1. Crie um projeto em <https://supabase.com>.
-2. No **SQL Editor**, execute o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
+2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
 3. Em **Project Settings > API**, copie a **Project URL** e a chave **publishable** (ou **anon public**).
-4. Preencha [`config.js`](config.js):
+4. Em **Authentication > URL Configuration**, defina:
+   - **Site URL:** `https://SEU-USUARIO.github.io/SEU-REPO/`
+   - **Redirect URLs:** `https://SEU-USUARIO.github.io/SEU-REPO/**`
+5. Preencha [`config.js`](config.js):
 
 ```js
 window.APP_CONFIG = {
@@ -50,29 +70,19 @@ window.APP_CONFIG = {
 };
 ```
 
-## Estrutura
+## Rodar localmente
 
-```
-.
-├── index.html              Interface
-├── config.js               URL + chave anon do Supabase
-├── assets/
-│   ├── styles.css          Visual
-│   └── app.js              Calendário, reservas e cancelamentos
-├── supabase/
-│   └── schema.sql          Tabela, políticas e funções
-├── server.js               Servidor local opcional (Node)
-├── iniciar.bat             Atalho do servidor local no Windows
-├── LEIA-ME.md              Manual completo em português
-└── package.json
-```
+A versão oficial é a publicada no GitHub Pages. Para testar a interface sem nuvem, abra `index.html` diretamente no navegador: ele entra em modo local (dados só naquele navegador) e não acessa o banco compartilhado.
+
+Com o `config.js` preenchido, o `iniciar.bat`/`server.js` servem a mesma versão com login e banco Supabase — útil para desenvolvimento.
 
 ## Limitações
 
-- Não há login de morador; o cancelamento é validado por nome + apartamento.
-- Os nomes e apartamentos ficam visíveis para quem tem o link.
-- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; basta reativá-lo no painel do Supabase.
+- O cadastro está **aberto**: qualquer pessoa com o link pode criar uma conta. Para restringir a moradores, desative **Authentication > Providers > Email > Allow new users to sign up** ou implemente aprovação do síndico.
+- Não há recuperação de senha na interface (pode ser adicionada com o Supabase Auth).
+- Não há painel de administração.
+- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 
 ## Atualizar o site
 
-Edite os arquivos e envie para a branch `main` do repositório. O GitHub Pages publica a nova versão automaticamente em alguns minutos.
+Edite os arquivos e envie para a branch `main`. O GitHub Pages publica a nova versão automaticamente em alguns minutos.

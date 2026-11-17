@@ -11,6 +11,6 @@
  * (index.html aberto direto no navegador) ou com o servidor Node.
  */
 window.APP_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseUrl: 'https://sbsjjdpvxalpgnbaqkke.supabase.co',
+  supabaseAnonKey: 'sb_publishable_tepDqVbvLxQ-gUTP3CAmwQ_219fY_EW'
 };

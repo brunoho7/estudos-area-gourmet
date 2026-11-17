@@ -10,7 +10,101 @@
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
-  <div class="app">
+  <div id="bootScreen" class="boot-screen">
+    <div class="boot-card">
+      <div class="logo boot-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3v6.5a2.5 2.5 0 0 0 5 0V3"></path>
+          <path d="M9.5 12v9"></path>
+          <path d="M17 3c-2.2 3.2-2.2 7.3 0 9.5V21"></path>
+        </svg>
+      </div>
+      <p class="eyebrow">Condomínio · Espaço Gourmet</p>
+      <h1>Reserva da Área Gourmet</h1>
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="bootText" class="boot-text">Carregando…</p>
+    </div>
+  </div>
+
+  <div id="authGate" class="auth-gate" hidden>
+    <div class="auth-shell">
+      <section class="auth-intro">
+        <div class="auth-intro__brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 3v6.5a2.5 2.5 0 0 0 5 0V3"></path>
+              <path d="M9.5 12v9"></path>
+              <path d="M17 3c-2.2 3.2-2.2 7.3 0 9.5V21"></path>
+            </svg>
+          </div>
+          <span>Área Gourmet</span>
+        </div>
+        <p class="eyebrow">Condomínio · Espaço Gourmet</p>
+        <h1>Seu churrasco<br>começa aqui.</h1>
+        <p class="auth-intro__text">Entre para reservar a área gourmet, consultar os dias ocupados e ver quem já reservou.</p>
+        <ul class="auth-benefits">
+          <li>Calendário compartilhado entre os moradores</li>
+          <li>Reserve e cancele em poucos cliques</li>
+          <li>Acesso exclusivo para moradores cadastrados</li>
+        </ul>
+        <p class="auth-intro__foot">Um espaço, uma boa conversa, boas lembranças.</p>
+      </section>
+
+      <section class="auth-card" aria-labelledby="authTitle">
+        <div class="auth-card__head">
+          <h2 id="authTitle">Entrar</h2>
+          <p id="authSubtitle">Use seu e-mail e senha para acessar.</p>
+        </div>
+
+        <div class="auth-tabs" role="tablist" aria-label="Acesso">
+          <button id="tabLogin" class="auth-tab is-active" type="button" role="tab" aria-selected="true">Entrar</button>
+          <button id="tabSignup" class="auth-tab" type="button" role="tab" aria-selected="false">Criar conta</button>
+        </div>
+
+        <form id="loginForm" class="auth-form" novalidate>
+          <p id="loginError" class="form-error" role="alert" hidden></p>
+          <div class="field">
+            <label for="loginEmail">E-mail</label>
+            <input id="loginEmail" type="email" autocomplete="email" placeholder="voce@email.com" required>
+          </div>
+          <div class="field">
+            <label for="loginPassword">Senha</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha" required>
+          </div>
+          <button id="loginSubmit" class="btn btn--primary btn--block" type="submit">Entrar</button>
+        </form>
+
+        <form id="signupForm" class="auth-form" novalidate hidden>
+          <p id="signupError" class="form-error" role="alert" hidden></p>
+          <p id="signupSuccess" class="form-success" role="status" hidden></p>
+          <div class="field">
+            <label for="signupName">Nome completo</label>
+            <input id="signupName" type="text" autocomplete="name" maxlength="60" placeholder="Ex.: Maria Souza" required>
+          </div>
+          <div class="field">
+            <label for="signupEmail">E-mail</label>
+            <input id="signupEmail" type="email" autocomplete="email" placeholder="voce@email.com" required>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="signupPassword">Senha</label>
+              <input id="signupPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" required>
+            </div>
+            <div class="field">
+              <label for="signupConfirm">Confirmar senha</label>
+              <input id="signupConfirm" type="password" autocomplete="new-password" placeholder="Repita a senha" required>
+            </div>
+          </div>
+          <button id="signupSubmit" class="btn btn--primary btn--block" type="submit">Criar conta</button>
+          <p class="auth-note">Ao criar a conta, você declara que mora no condomínio. Se a confirmação de e-mail estiver ativa, o acesso é liberado depois de confirmar.</p>
+        </form>
+
+        <p class="auth-footnote">Acesso restrito a moradores cadastrados.<br><span>Problemas para entrar? Fale com o síndico.</span></p>
+      </section>
+    </div>
+  </div>
+
+  <div class="app" id="appRoot" hidden>
     <header class="hero">
       <div class="hero__brand">
         <div class="logo" aria-hidden="true">
@@ -31,6 +125,10 @@
           <span class="dot" aria-hidden="true"></span>
           <span id="statusText">Modo local</span>
         </span>
+        <div id="userBox" class="user-box" hidden>
+          <span id="userName" class="user-box__name"></span>
+          <button id="logoutBtn" class="btn btn--ghost btn--xs" type="button">Sair</button>
+        </div>
         <button id="todayBtn" class="btn btn--ghost" type="button">Ir para hoje</button>
       </div>
     </header>
@@ -171,7 +269,7 @@
       <div id="detailRows" class="detail-list"></div>
       <div id="detailNotes" class="notes" hidden></div>
 
-      <div class="cancel-zone">
+      <div class="cancel-zone" id="cancelZone">
         <h3>Cancelar reserva</h3>
         <p id="cancelHint">—</p>
         <div id="cancelInputs" class="cancel-grid" hidden>
@@ -189,6 +287,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+  <script src="assets/vendor/supabase.js"></script>
   <script src="config.js"></script>
   <script src="assets/app.js" defer></script>
 </body>

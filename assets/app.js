@@ -106,6 +106,7 @@
       phone: reservation.phone ? String(reservation.phone) : '',
       guests: Number(reservation.guests) || 1,
       notes: reservation.notes ? String(reservation.notes) : '',
+      userId: reservation.user_id || reservation.userId || null,
       createdAt: reservation.createdAt || reservation.created_at || new Date().toISOString()
     };
   }
@@ -129,12 +130,37 @@
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
     identity: readJSON(KEY_USER, null),
+    user: null,
     activeDate: null,
     activeId: null,
     busy: false
   };
 
   const el = {
+    bootScreen: document.getElementById('bootScreen'),
+    bootText: document.getElementById('bootText'),
+    authGate: document.getElementById('authGate'),
+    authTitle: document.getElementById('authTitle'),
+    authSubtitle: document.getElementById('authSubtitle'),
+    tabLogin: document.getElementById('tabLogin'),
+    tabSignup: document.getElementById('tabSignup'),
+    loginForm: document.getElementById('loginForm'),
+    loginError: document.getElementById('loginError'),
+    loginEmail: document.getElementById('loginEmail'),
+    loginPassword: document.getElementById('loginPassword'),
+    loginSubmit: document.getElementById('loginSubmit'),
+    signupForm: document.getElementById('signupForm'),
+    signupError: document.getElementById('signupError'),
+    signupSuccess: document.getElementById('signupSuccess'),
+    signupName: document.getElementById('signupName'),
+    signupEmail: document.getElementById('signupEmail'),
+    signupPassword: document.getElementById('signupPassword'),
+    signupConfirm: document.getElementById('signupConfirm'),
+    signupSubmit: document.getElementById('signupSubmit'),
+    appRoot: document.getElementById('appRoot'),
+    userBox: document.getElementById('userBox'),
+    userName: document.getElementById('userName'),
+    logoutBtn: document.getElementById('logoutBtn'),
     overlay: document.getElementById('overlay'),
     bookingModal: document.getElementById('bookingModal'),
     detailsModal: document.getElementById('detailsModal'),
@@ -163,6 +189,7 @@
     dFull: document.getElementById('dFull'),
     detailRows: document.getElementById('detailRows'),
     detailNotes: document.getElementById('detailNotes'),
+    cancelZone: document.getElementById('cancelZone'),
     cancelHint: document.getElementById('cancelHint'),
     cancelInputs: document.getElementById('cancelInputs'),
     cancelBtn: document.getElementById('cancelBtn'),
@@ -174,6 +201,9 @@
   let lastFocus = null;
   let toastTimer = null;
   let refreshing = false;
+  let authClient = null;
+  let authStarting = false;
+  let pollingTimer = null;
 
   /* ---------------- API (servidor) ---------------- */
 
@@ -209,66 +239,46 @@
 
   /* ---------------- API (Supabase / GitHub Pages) ---------------- */
 
-  function supabaseHeaders() {
-    return {
-      'apikey': SUPABASE_CONFIG.key,
-      'Authorization': `Bearer ${SUPABASE_CONFIG.key}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    };
-  }
-
-  function supabaseError(data) {
-    if (!data) return 'Não foi possível concluir a operação.';
-    if (typeof data.message === 'string' && data.message.trim()) return data.message;
-    if (typeof data.error_description === 'string') return data.error_description;
-    if (typeof data.error === 'string') return data.error;
-    if (typeof data.details === 'string') return data.details;
-    return 'Não foi possível concluir a operação.';
+  function supabaseClient() {
+    if (!authClient) throw new Error('A autenticação ainda não foi inicializada.');
+    return authClient;
   }
 
   async function supabaseGetState() {
-    const res = await fetch(
-      `${SUPABASE_CONFIG.url}/rest/v1/reservations?select=id,date,name,apartment,phone,guests,notes,created_at&order=date.asc`,
-      { headers: supabaseHeaders(), cache: 'no-store' }
-    );
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(supabaseError(data), res.status);
+    const { data, error } = await supabaseClient()
+      .from('reservations')
+      .select('id,date,name,apartment,phone,guests,notes,created_at,user_id')
+      .order('date', { ascending: true });
+
+    if (error) {
+      throw new ApiError(error.message || 'Não foi possível carregar as reservas.', error.status || 400);
+    }
     return normalizeReservations(data);
   }
 
   async function supabaseCreate(payload) {
-    const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/rpc/create_reservation`, {
-      method: 'POST',
-      headers: supabaseHeaders(),
-      body: JSON.stringify({
-        p_date: payload.date,
-        p_name: payload.name,
-        p_apartment: payload.apartment,
-        p_phone: payload.phone || '',
-        p_guests: payload.guests,
-        p_notes: payload.notes || ''
-      })
+    const { data, error } = await supabaseClient().rpc('create_reservation', {
+      p_date: payload.date,
+      p_name: payload.name,
+      p_apartment: payload.apartment,
+      p_phone: payload.phone || '',
+      p_guests: payload.guests,
+      p_notes: payload.notes || ''
     });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(supabaseError(data), res.status);
+
+    if (error) {
+      throw new ApiError(error.message || 'Não foi possível concluir a reserva.', error.status || 400);
+    }
     const reservation = Array.isArray(data) ? data[0] : data;
     if (!reservation || !reservation.id) throw new Error('O servidor não retornou a reserva criada.');
     return normalizeReservation(reservation);
   }
 
-  async function supabaseCancel(id, credentials) {
-    const res = await fetch(`${SUPABASE_CONFIG.url}/rest/v1/rpc/cancel_reservation`, {
-      method: 'POST',
-      headers: supabaseHeaders(),
-      body: JSON.stringify({
-        p_id: id,
-        p_name: credentials.name,
-        p_apartment: credentials.apartment
-      })
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(supabaseError(data), res.status);
+  async function supabaseCancel(id) {
+    const { error } = await supabaseClient().rpc('cancel_reservation', { p_id: id });
+    if (error) {
+      throw new ApiError(error.message || 'Não foi possível cancelar a reserva.', error.status || 400);
+    }
     return { ok: true };
   }
 
@@ -319,7 +329,7 @@
       return api.cancel(id, credentials);
     }
     if (state.mode === 'supabase') {
-      return supabaseCancel(id, credentials);
+      return supabaseCancel(id);
     }
     const list = loadLocal();
     const index = list.findIndex((r) => r.id === id);
@@ -335,10 +345,23 @@
   }
 
   function ownsReservation(reservation) {
+    if (state.mode === 'supabase') {
+      return !!(state.user && reservation.userId &&
+        String(reservation.userId) === String(state.user.id));
+    }
     const id = state.identity;
     if (!id) return false;
     return normText(id.name) === normText(reservation.name) &&
       normApt(id.apartment) === normApt(reservation.apartment);
+  }
+
+  function currentUserName() {
+    if (!state.user) return '';
+    const metadata = state.user.user_metadata || {};
+    const name = String(metadata.name || '').trim();
+    if (name) return name;
+    const email = String(state.user.email || '');
+    return email ? email.split('@')[0] : 'Morador';
   }
 
   function rememberIdentity(payload) {
@@ -366,7 +389,7 @@
         : 'Modo local';
 
     el.modeNote.textContent = viaSupabase
-      ? 'As reservas são compartilhadas com todos os moradores que acessam este link. Os dados ficam salvos no Supabase e o calendário se atualiza automaticamente.'
+      ? 'As reservas são compartilhadas entre os moradores cadastrados. Os dados ficam salvos no Supabase e o calendário se atualiza automaticamente.'
       : viaServer
         ? 'As reservas são compartilhadas com todos os moradores que acessam este endereço. Deixe o servidor ligado para que o calendário fique sempre atualizado.'
         : 'Este arquivo foi aberto direto no navegador: as reservas ficam salvas apenas neste computador. Para compartilhar com os moradores, use a versão publicada na web.';
@@ -538,14 +561,27 @@
     el.fGuests.value = '10';
     el.fNotes.value = '';
 
-    const identity = state.identity || {};
-    el.fName.value = identity.name || '';
-    el.fApt.value = identity.apartment || '';
-    el.fPhone.value = identity.phone || '';
+    if (state.mode === 'supabase') {
+      el.fName.value = currentUserName();
+      el.fName.readOnly = true;
+      el.fName.setAttribute('aria-readonly', 'true');
+      el.fApt.value = '';
+      el.fPhone.value = '';
+    } else {
+      el.fName.readOnly = false;
+      el.fName.removeAttribute('aria-readonly');
+      const identity = state.identity || {};
+      el.fName.value = identity.name || '';
+      el.fApt.value = identity.apartment || '';
+      el.fPhone.value = identity.phone || '';
+    }
 
     setBusy(el.bookingSubmit, false, 'Confirmar reserva');
     openOverlay('booking');
-    setTimeout(() => el.fName.focus(), 40);
+    setTimeout(() => {
+      if (el.fName.readOnly) el.fApt.focus();
+      else el.fName.focus();
+    }, 40);
   }
 
   function openDetails(reservation) {
@@ -555,6 +591,7 @@
     const d = parseISO(reservation.date);
     const guests = Number(reservation.guests) || 1;
     const mine = ownsReservation(reservation);
+    const authMode = state.mode === 'supabase';
 
     el.dDay.textContent = pad(d.getDate());
     el.dWeekday.textContent = WEEKDAYS[d.getDay()];
@@ -580,18 +617,30 @@
       el.detailNotes.hidden = true;
     }
 
-    el.cancelInputs.hidden = mine;
     el.cName.value = '';
     el.cApt.value = '';
-    el.cancelHint.textContent = mine
-      ? `Você está identificado como ${reservation.name} (apt. ${reservation.apartment}). A reserva será removida do calendário.`
-      : 'Para cancelar, informe o nome e o apartamento usados nesta reserva.';
+    el.cancelZone.hidden = false;
+    el.cancelBtn.hidden = false;
+
+    if (authMode) {
+      el.cancelInputs.hidden = true;
+      el.cancelBtn.hidden = !mine;
+      el.cancelHint.textContent = mine
+        ? `Você está logado como ${currentUserName()}. A reserva será removida do calendário.`
+        : 'Somente quem fez esta reserva pode cancelá-la.';
+    } else {
+      el.cancelInputs.hidden = mine;
+      el.cancelHint.textContent = mine
+        ? `Você está identificado como ${reservation.name} (apt. ${reservation.apartment}). A reserva será removida do calendário.`
+        : 'Para cancelar, informe o nome e o apartamento usados nesta reserva.';
+    }
+
     setBusy(el.cancelBtn, false, 'Cancelar esta reserva');
 
     openOverlay('details');
     setTimeout(() => {
       if (mine) el.cancelBtn.focus();
-      else el.cName.focus();
+      else if (!authMode) el.cName.focus();
     }, 40);
   }
 
@@ -649,7 +698,7 @@
       const reservation = await createReservation(payload);
       state.reservations = state.reservations.filter((r) => r.date !== reservation.date);
       state.reservations.push(reservation);
-      rememberIdentity(payload);
+      if (state.mode !== 'supabase') rememberIdentity(payload);
       closeModal();
       render();
       flashDate(reservation.date);
@@ -672,13 +721,23 @@
     }
 
     const mine = ownsReservation(reservation);
-    const credentials = mine
-      ? { name: state.identity.name, apartment: state.identity.apartment }
-      : { name: el.cName.value.trim(), apartment: el.cApt.value.trim() };
+    const authMode = state.mode === 'supabase';
+    let credentials = null;
 
-    if (!credentials.name || !credentials.apartment) {
-      toast('Informe o nome e o apartamento para cancelar.', 'warn');
-      return;
+    if (authMode) {
+      if (!mine) {
+        toast('Você só pode cancelar suas próprias reservas.', 'warn');
+        return;
+      }
+    } else {
+      credentials = mine
+        ? { name: state.identity.name, apartment: state.identity.apartment }
+        : { name: el.cName.value.trim(), apartment: el.cApt.value.trim() };
+
+      if (!credentials.name || !credentials.apartment) {
+        toast('Informe o nome e o apartamento para cancelar.', 'warn');
+        return;
+      }
     }
 
     const confirmed = window.confirm(
@@ -704,6 +763,7 @@
 
   async function silentRefresh() {
     if (state.mode === 'local' || refreshing) return;
+    if (state.mode === 'supabase' && !state.user) return;
     refreshing = true;
     try {
       if (state.mode === 'supabase') {
@@ -731,9 +791,280 @@
     flashDate(state.today);
   }
 
+  /* ---------------- Autenticação ---------------- */
+
+  function authErrorMessage(error) {
+    const message = String((error && error.message) || '');
+    const lower = message.toLowerCase();
+
+    if (lower.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (lower.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.';
+    if (lower.includes('user already registered')) return 'Este e-mail já está cadastrado. Tente entrar.';
+    if (lower.includes('password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (lower.includes('unable to validate email')) return 'Informe um e-mail válido.';
+    if (lower.includes('signups not allowed')) return 'O cadastro está desativado. Fale com o síndico.';
+    if (lower.includes('rate limit')) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+    if (lower.includes('network')) return 'Sem conexão. Verifique sua internet e tente de novo.';
+    return message || 'Não foi possível concluir. Tente novamente.';
+  }
+
+  function authShowError(node, message) {
+    node.textContent = message;
+    node.hidden = false;
+  }
+
+  function authHideError(node) {
+    node.textContent = '';
+    node.hidden = true;
+  }
+
+  function authBusy(button, busy, label) {
+    button.classList.toggle('is-loading', busy);
+    button.disabled = busy;
+    button.textContent = busy ? 'Aguarde…' : label;
+  }
+
+  function setAuthTab(tab) {
+    const login = tab === 'login';
+    el.tabLogin.classList.toggle('is-active', login);
+    el.tabSignup.classList.toggle('is-active', !login);
+    el.tabLogin.setAttribute('aria-selected', login ? 'true' : 'false');
+    el.tabSignup.setAttribute('aria-selected', login ? 'false' : 'true');
+    el.loginForm.hidden = !login;
+    el.signupForm.hidden = login;
+    el.authTitle.textContent = login ? 'Entrar' : 'Criar conta';
+    el.authSubtitle.textContent = login
+      ? 'Use seu e-mail e senha para acessar.'
+      : 'Cadastre-se para reservar a área gourmet.';
+    authHideError(el.loginError);
+    authHideError(el.signupError);
+    el.signupSuccess.hidden = true;
+  }
+
+  function showBoot(message) {
+    el.bootScreen.hidden = false;
+    el.bootText.textContent = message || 'Carregando…';
+  }
+
+  function bootError(message) {
+    showBoot(message);
+    const spinner = el.bootScreen.querySelector('.spinner');
+    if (spinner) spinner.hidden = true;
+  }
+
+  function hideBoot() {
+    el.bootScreen.hidden = true;
+  }
+
+  function showApp() {
+    hideBoot();
+    el.authGate.hidden = true;
+    el.appRoot.hidden = false;
+    if (state.user) {
+      el.userBox.hidden = false;
+      el.userName.textContent = currentUserName();
+    } else {
+      el.userBox.hidden = true;
+    }
+  }
+
+  function showAuthGate() {
+    hideBoot();
+    el.appRoot.hidden = true;
+    el.authGate.hidden = false;
+    el.userBox.hidden = true;
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+    if (!el.overlay.hidden) closeModal();
+    document.body.classList.remove('modal-open');
+    setAuthTab('login');
+    el.loginPassword.value = '';
+    setTimeout(() => el.loginEmail.focus(), 80);
+  }
+
+  function startPolling() {
+    if (pollingTimer || state.mode === 'local') return;
+    pollingTimer = setInterval(() => {
+      if (document.visibilityState === 'visible' && el.overlay.hidden) silentRefresh();
+    }, 60000);
+  }
+
+  async function handleAuthenticated(user) {
+    if (!user || authStarting) return;
+    if (state.user && state.user.id === user.id && !el.appRoot.hidden) return;
+
+    authStarting = true;
+    state.user = user;
+    state.mode = 'supabase';
+
+    try {
+      try {
+        state.reservations = await supabaseGetState();
+      } catch (err) {
+        state.reservations = [];
+        setTimeout(() => {
+          toast(err.message || 'Não foi possível carregar as reservas.', 'error');
+        }, 400);
+      }
+
+      const today = parseISO(state.today);
+      state.year = today.getFullYear();
+      state.month = today.getMonth();
+      applyMode();
+      render();
+      showApp();
+      startPolling();
+    } finally {
+      authStarting = false;
+    }
+  }
+
+  async function submitLogin(event) {
+    event.preventDefault();
+    authHideError(el.loginError);
+
+    const email = el.loginEmail.value.trim();
+    const password = el.loginPassword.value;
+
+    if (!email || !password) {
+      authShowError(el.loginError, 'Informe o e-mail e a senha.');
+      return;
+    }
+
+    authBusy(el.loginSubmit, true, 'Entrar');
+    try {
+      const { data, error } = await authClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (!data.session || !data.user) throw new Error('Não foi possível iniciar a sessão.');
+      el.loginPassword.value = '';
+      await handleAuthenticated(data.user);
+      toast(`Bem-vindo(a), ${currentUserName()}!`, 'success');
+    } catch (err) {
+      authShowError(el.loginError, authErrorMessage(err));
+    } finally {
+      authBusy(el.loginSubmit, false, 'Entrar');
+    }
+  }
+
+  async function submitSignup(event) {
+    event.preventDefault();
+    authHideError(el.signupError);
+    el.signupSuccess.hidden = true;
+
+    const name = el.signupName.value.trim();
+    const email = el.signupEmail.value.trim();
+    const password = el.signupPassword.value;
+    const confirmation = el.signupConfirm.value;
+
+    if (name.length < 3) {
+      authShowError(el.signupError, 'Informe seu nome completo (pelo menos 3 letras).');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      authShowError(el.signupError, 'Informe um e-mail válido.');
+      return;
+    }
+    if (password.length < 6) {
+      authShowError(el.signupError, 'A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (password !== confirmation) {
+      authShowError(el.signupError, 'As senhas não conferem.');
+      return;
+    }
+
+    authBusy(el.signupSubmit, true, 'Criar conta');
+    try {
+      const { data, error } = await authClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+          emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+      });
+      if (error) throw error;
+
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        authShowError(el.signupError, 'Este e-mail já está cadastrado. Tente entrar.');
+        return;
+      }
+
+      el.signupPassword.value = '';
+      el.signupConfirm.value = '';
+
+      if (data.session && data.user) {
+        await handleAuthenticated(data.user);
+        toast(`Conta criada. Bem-vindo(a), ${currentUserName()}!`, 'success');
+      } else {
+        el.signupSuccess.textContent =
+          'Conta criada! Enviamos um link de confirmação para o seu e-mail. Confirme e depois entre com e-mail e senha.';
+        el.signupSuccess.hidden = false;
+      }
+    } catch (err) {
+      authShowError(el.signupError, authErrorMessage(err));
+    } finally {
+      authBusy(el.signupSubmit, false, 'Criar conta');
+    }
+  }
+
+  async function logout() {
+    if (!authClient) return;
+    try {
+      await authClient.auth.signOut();
+    } catch (err) {
+      /* a sessão local será limpa de qualquer forma */
+    }
+    state.user = null;
+    state.reservations = [];
+    el.userBox.hidden = true;
+    showAuthGate();
+    toast('Você saiu da sua conta.', 'success');
+  }
+
+  function bindAuthEvents() {
+    authClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setTimeout(() => {
+          if (!state.user) return;
+          state.user = null;
+          state.reservations = [];
+          showAuthGate();
+        }, 0);
+        return;
+      }
+      if (event === 'SIGNED_IN' && session && session.user) {
+        if (!state.user) {
+          setTimeout(() => {
+            if (!state.user) handleAuthenticated(session.user);
+          }, 0);
+        }
+        return;
+      }
+      if (event === 'TOKEN_REFRESHED' && session) {
+        state.user = session.user;
+      }
+    });
+  }
+
   /* ---------------- Eventos ---------------- */
 
   function bindEvents() {
+    el.tabLogin.addEventListener('click', () => setAuthTab('login'));
+    el.tabSignup.addEventListener('click', () => setAuthTab('signup'));
+    el.loginForm.addEventListener('submit', submitLogin);
+    el.signupForm.addEventListener('submit', submitSignup);
+    el.logoutBtn.addEventListener('click', logout);
+
+    [el.loginEmail, el.loginPassword].forEach((input) => {
+      input.addEventListener('input', () => authHideError(el.loginError));
+    });
+    [el.signupName, el.signupEmail, el.signupPassword, el.signupConfirm].forEach((input) => {
+      input.addEventListener('input', () => authHideError(el.signupError));
+    });
+
     el.prevMonth.addEventListener('click', () => {
       state.month -= 1;
       if (state.month < 0) { state.month = 11; state.year -= 1; }
@@ -795,36 +1126,21 @@
 
   /* ---------------- Inicialização ---------------- */
 
-  async function init() {
-    bindEvents();
-
+  async function startLegacyMode() {
     try {
-      if (SUPABASE_CONFIG) {
-        state.mode = 'supabase';
-        state.reservations = await supabaseGetState();
-      } else {
-        const data = await api.getState();
-        state.mode = 'server';
-        state.reservations = normalizeReservations(data.reservations);
-        if (typeof data.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.today)) {
-          state.today = data.today;
-        }
+      const data = await api.getState();
+      state.mode = 'server';
+      state.reservations = normalizeReservations(data.reservations);
+      if (typeof data.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.today)) {
+        state.today = data.today;
       }
     } catch (err) {
-      if (SUPABASE_CONFIG) {
-        state.mode = 'supabase';
-        state.reservations = [];
+      state.mode = 'local';
+      state.reservations = loadLocal();
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
         setTimeout(() => {
-          toast(err.message || 'Não foi possível carregar as reservas compartilhadas.', 'error');
+          toast('Sem conexão com o servidor. Exibindo os dados locais deste navegador.', 'error');
         }, 500);
-      } else {
-        state.mode = 'local';
-        state.reservations = loadLocal();
-        if (location.protocol === 'http:' || location.protocol === 'https:') {
-          setTimeout(() => {
-            toast('Sem conexão com o servidor. Exibindo os dados locais deste navegador.', 'error');
-          }, 500);
-        }
       }
     }
 
@@ -834,11 +1150,54 @@
 
     applyMode();
     render();
+    hideBoot();
+    el.authGate.hidden = true;
+    el.appRoot.hidden = false;
+    startPolling();
+  }
 
-    if (state.mode !== 'local') {
-      setInterval(() => {
-        if (document.visibilityState === 'visible' && el.overlay.hidden) silentRefresh();
-      }, 60000);
+  async function init() {
+    bindEvents();
+
+    const authEnabled = !!SUPABASE_CONFIG && window.location.protocol !== 'file:';
+
+    if (!authEnabled) {
+      await startLegacyMode();
+      return;
+    }
+
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      bootError('Não foi possível carregar a biblioteca de acesso. Recarregue a página.');
+      return;
+    }
+
+    try {
+      authClient = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+    } catch (err) {
+      bootError('Não foi possível configurar o acesso. Verifique o config.js.');
+      return;
+    }
+
+    bindAuthEvents();
+
+    try {
+      const { data, error } = await authClient.auth.getSession();
+      if (error) throw error;
+
+      if (data.session && data.session.user) {
+        await handleAuthenticated(data.session.user);
+      } else {
+        showAuthGate();
+      }
+    } catch (err) {
+      showAuthGate();
+      authShowError(el.loginError, 'Não foi possível verificar sua sessão. Entre novamente.');
     }
   }
 

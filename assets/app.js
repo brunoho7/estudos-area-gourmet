@@ -751,6 +751,12 @@
       });
       if (error) throw error;
 
+      try {
+        await authClient.auth.updateUser({ data: { name } });
+      } catch (err) {
+        /* o perfil no banco já foi salvo; o cabeçalho é atualizado localmente */
+      }
+
       state.user.user_metadata = Object.assign({}, state.user.user_metadata, { name });
       el.userName.textContent = name;
       closeModal();

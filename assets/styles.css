@@ -933,7 +933,12 @@ button, input, select, textarea { font-family: inherit; }
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  border-radius: 6px;
 }
+
+.user-box__name:hover { text-decoration: underline; text-underline-offset: 2px; }
+.user-box__name:focus-visible { outline: 2px solid rgba(255, 255, 255, .8); outline-offset: 2px; }
 
 .user-box .btn--ghost {
   padding: 6px 8px;

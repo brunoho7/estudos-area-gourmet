@@ -1223,7 +1223,22 @@
     el.loginForm.addEventListener('submit', submitLogin);
     el.signupForm.addEventListener('submit', submitSignup);
     el.logoutBtn.addEventListener('click', logout);
-    el.profileBtn.addEventListener('click', openProfile);
+
+    document.addEventListener('click', (event) => {
+      const trigger = event.target.closest('#profileBtn, #userName');
+      if (trigger && state.user) {
+        event.preventDefault();
+        openProfile();
+      }
+    });
+
+    el.userName.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openProfile();
+      }
+    });
+
     el.profileForm.addEventListener('submit', saveProfile);
     el.profileDelete.addEventListener('click', deleteMyAccount);
 

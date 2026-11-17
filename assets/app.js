@@ -132,6 +132,8 @@
     identity: readJSON(KEY_USER, null),
     user: null,
     profile: null,
+    adminFilter: 'pending',
+    adminUsers: [],
     activeDate: null,
     activeId: null,
     busy: false
@@ -163,6 +165,20 @@
     userName: document.getElementById('userName'),
     profileBtn: document.getElementById('profileBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
+    approvalGate: document.getElementById('approvalGate'),
+    approvalTitle: document.getElementById('approvalTitle'),
+    approvalText: document.getElementById('approvalText'),
+    approvalUser: document.getElementById('approvalUser'),
+    approvalRefresh: document.getElementById('approvalRefresh'),
+    approvalLogout: document.getElementById('approvalLogout'),
+    adminPanel: document.getElementById('adminPanel'),
+    adminBtn: document.getElementById('adminBtn'),
+    adminModal: document.getElementById('adminModal'),
+    adminFilterPending: document.getElementById('adminFilterPending'),
+    adminFilterAll: document.getElementById('adminFilterAll'),
+    adminRefresh: document.getElementById('adminRefresh'),
+    adminError: document.getElementById('adminError'),
+    adminUserList: document.getElementById('adminUserList'),
     profileModal: document.getElementById('profileModal'),
     profileForm: document.getElementById('profileForm'),
     profileError: document.getElementById('profileError'),
@@ -529,6 +545,7 @@
     el.bookingModal.hidden = which !== 'booking';
     el.detailsModal.hidden = which !== 'details';
     el.profileModal.hidden = which !== 'profile';
+    el.adminModal.hidden = which !== 'admin';
     document.body.classList.add('modal-open');
   }
 
@@ -538,6 +555,7 @@
     el.bookingModal.hidden = true;
     el.detailsModal.hidden = true;
     el.profileModal.hidden = true;
+    el.adminModal.hidden = true;
     document.body.classList.remove('modal-open');
     state.activeDate = null;
     state.activeId = null;
@@ -708,11 +726,24 @@
   async function loadMyProfile() {
     if (!state.user) return null;
 
-    const { data, error } = await supabaseClient()
+    let { data, error } = await supabaseClient()
       .from('profiles')
-      .select('name,apartment,block,phone')
+      .select('name,apartment,block,phone,role,status')
       .eq('id', state.user.id)
       .maybeSingle();
+
+    if (error && /column .*role.*does not exist|column .*status.*does not exist|schema cache/i.test(error.message || '')) {
+      const fallback = await supabaseClient()
+        .from('profiles')
+        .select('name,apartment,block,phone')
+        .eq('id', state.user.id)
+        .maybeSingle();
+
+      if (fallback.error) throw fallback.error;
+      return fallback.data
+        ? { role: 'resident', status: 'approved', ...fallback.data }
+        : null;
+    }
 
     if (error) throw error;
     return data || null;
@@ -783,6 +814,7 @@
 
       const saved = Array.isArray(data) ? data[0] : data;
       if (saved) state.profile = saved;
+      updateAdminVisibility();
 
       try {
         await authClient.auth.updateUser({ data: { name } });
@@ -966,6 +998,15 @@
     refreshing = true;
     try {
       if (state.mode === 'supabase') {
+        const profile = await loadMyProfile();
+        state.profile = profile;
+
+        if (!profile || profile.status !== 'approved') {
+          showApprovalGate(profile);
+          return;
+        }
+
+        updateAdminVisibility();
         state.reservations = await supabaseGetState();
       } else {
         const data = await api.getState();
@@ -1055,9 +1096,20 @@
     el.bootScreen.hidden = true;
   }
 
+  function isAdminUser() {
+    return !!(state.profile &&
+      state.profile.role === 'admin' &&
+      state.profile.status === 'approved');
+  }
+
+  function updateAdminVisibility() {
+    el.adminPanel.hidden = !isAdminUser();
+  }
+
   function showApp() {
     hideBoot();
     el.authGate.hidden = true;
+    el.approvalGate.hidden = true;
     el.appRoot.hidden = false;
     if (state.user) {
       el.userBox.hidden = false;
@@ -1065,14 +1117,18 @@
     } else {
       el.userBox.hidden = true;
     }
+    updateAdminVisibility();
   }
 
   function showAuthGate() {
     hideBoot();
     el.appRoot.hidden = true;
     el.authGate.hidden = false;
+    el.approvalGate.hidden = true;
     el.userBox.hidden = true;
+    el.adminPanel.hidden = true;
     state.profile = null;
+    state.adminUsers = [];
     if (pollingTimer) {
       clearInterval(pollingTimer);
       pollingTimer = null;
@@ -1082,6 +1138,73 @@
     setAuthTab('login');
     el.loginPassword.value = '';
     setTimeout(() => el.loginEmail.focus(), 80);
+  }
+
+  function showApprovalGate(profile) {
+    hideBoot();
+    el.authGate.hidden = true;
+    el.appRoot.hidden = true;
+    el.approvalGate.hidden = false;
+    el.userBox.hidden = true;
+    el.adminPanel.hidden = true;
+
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
+    if (!el.overlay.hidden) closeModal();
+    document.body.classList.remove('modal-open');
+
+    const status = profile && profile.status;
+
+    if (status === 'rejected') {
+      el.approvalTitle.textContent = 'Acesso não autorizado';
+      el.approvalText.textContent = 'Seu acesso foi recusado pelo administrador. Fale com o síndico se acredita que isso foi um engano.';
+      el.approvalRefresh.textContent = 'Verificar novamente';
+    } else if (status === 'pending') {
+      el.approvalTitle.textContent = 'Acesso em análise';
+      el.approvalText.textContent = 'Sua conta foi criada, mas o administrador ainda precisa aprovar seu acesso. Assim que for aprovada, clique em Verificar aprovação.';
+      el.approvalRefresh.textContent = 'Verificar aprovação';
+    } else {
+      el.approvalTitle.textContent = 'Cadastro não encontrado';
+      el.approvalText.textContent = 'Não encontramos seu perfil. Peça ao administrador para verificar seu cadastro ou entre novamente.';
+      el.approvalRefresh.textContent = 'Verificar novamente';
+    }
+
+    const email = state.user ? state.user.email : '';
+    el.approvalUser.textContent = [profile && profile.name, email].filter(Boolean).join(' · ');
+    el.approvalRefresh.disabled = false;
+    setTimeout(() => el.approvalRefresh.focus(), 80);
+  }
+
+  async function refreshApproval() {
+    if (!state.user || !authClient) return;
+
+    const label = el.approvalRefresh.textContent;
+    el.approvalRefresh.disabled = true;
+    el.approvalRefresh.textContent = 'Verificando…';
+
+    try {
+      const profile = await loadMyProfile();
+      state.profile = profile;
+
+      if (profile && profile.status === 'approved') {
+        await handleAuthenticated(state.user);
+      } else {
+        showApprovalGate(profile);
+        toast(
+          profile && profile.status === 'rejected'
+            ? 'Seu acesso continua recusado.'
+            : 'Seu acesso ainda está aguardando aprovação.',
+          'warn'
+        );
+      }
+    } catch (err) {
+      toast(err.message || 'Não foi possível verificar agora.', 'error');
+    } finally {
+      el.approvalRefresh.disabled = false;
+      el.approvalRefresh.textContent = label;
+    }
   }
 
   function startPolling() {
@@ -1101,18 +1224,23 @@
 
     try {
       try {
+        state.profile = await loadMyProfile();
+      } catch (err) {
+        state.profile = null;
+      }
+
+      if (!state.profile || state.profile.status !== 'approved') {
+        showApprovalGate(state.profile);
+        return;
+      }
+
+      try {
         state.reservations = await supabaseGetState();
       } catch (err) {
         state.reservations = [];
         setTimeout(() => {
           toast(err.message || 'Não foi possível carregar as reservas.', 'error');
         }, 400);
-      }
-
-      try {
-        state.profile = await loadMyProfile();
-      } catch (err) {
-        state.profile = null;
       }
 
       const today = parseISO(state.today);
@@ -1255,6 +1383,185 @@
     });
   }
 
+  /* ---------------- Administração de usuários ---------------- */
+
+  function showAdminError(message) {
+    el.adminError.textContent = message;
+    el.adminError.hidden = false;
+  }
+
+  function hideAdminError() {
+    el.adminError.textContent = '';
+    el.adminError.hidden = true;
+  }
+
+  function adminRoleBadge(role) {
+    return role === 'admin'
+      ? '<span class="admin-badge admin-badge--admin">Administrador</span>'
+      : '<span class="admin-badge admin-badge--resident">Morador</span>';
+  }
+
+  function adminStatusBadge(status) {
+    const map = {
+      pending: ['Aguardando', 'pending'],
+      approved: ['Aprovado', 'approved'],
+      rejected: ['Recusado', 'rejected']
+    };
+    const item = map[status] || ['—', 'resident'];
+    return `<span class="admin-badge admin-badge--${item[1]}">${item[0]}</span>`;
+  }
+
+  function setAdminFilter(filter) {
+    state.adminFilter = filter;
+    const pending = filter === 'pending';
+    el.adminFilterPending.classList.toggle('is-active', pending);
+    el.adminFilterAll.classList.toggle('is-active', !pending);
+    el.adminFilterPending.setAttribute('aria-selected', pending ? 'true' : 'false');
+    el.adminFilterAll.setAttribute('aria-selected', pending ? 'false' : 'true');
+    renderAdminUsers();
+  }
+
+  function renderAdminUsers() {
+    const filter = state.adminFilter;
+    const order = { pending: 0, rejected: 1, approved: 2 };
+    const users = state.adminUsers
+      .filter((user) => filter === 'all' || user.status === 'pending')
+      .sort((a, b) => {
+        const byStatus = (order[a.status] ?? 3) - (order[b.status] ?? 3);
+        if (byStatus !== 0) return byStatus;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
+
+    if (users.length === 0) {
+      el.adminUserList.innerHTML = `<p class="admin-empty">${
+        filter === 'pending'
+          ? 'Nenhuma solicitação pendente no momento.'
+          : 'Nenhum usuário encontrado.'
+      }</p>`;
+      return;
+    }
+
+    el.adminUserList.innerHTML = users.map((user) => {
+      const self = state.user && user.id === state.user.id;
+      const details = [
+        user.apartment ? `Apt. ${esc(user.apartment)}` : '',
+        user.block ? `Bloco ${esc(user.block)}` : '',
+        user.phone ? esc(user.phone) : ''
+      ].filter(Boolean).join(' · ');
+
+      const actions = [];
+
+      if (self) {
+        actions.push('<span class="admin-self">Você</span>');
+      } else {
+        if (user.status !== 'approved') {
+          actions.push(`<button class="btn btn--primary btn--xs" type="button" data-admin-action="approve" data-id="${esc(user.id)}">Aprovar</button>`);
+        }
+        if (user.status !== 'rejected') {
+          actions.push(`<button class="btn btn--danger btn--xs" type="button" data-admin-action="reject" data-id="${esc(user.id)}">Recusar</button>`);
+        }
+        actions.push(`<button class="btn btn--ghost btn--xs" type="button" data-admin-action="toggle-role" data-id="${esc(user.id)}">${
+          user.role === 'admin' ? 'Tornar morador' : 'Tornar administrador'
+        }</button>`);
+      }
+
+      return `<article class="admin-user">
+        <div>
+          <div class="admin-user__name">${esc(user.name || 'Sem nome')} ${adminRoleBadge(user.role)} ${adminStatusBadge(user.status)}</div>
+          <div class="admin-user__email">${esc(user.email || '')}</div>
+          ${details ? `<div class="admin-user__meta">${details}</div>` : ''}
+          <div class="admin-user__meta">Solicitado em ${esc(fmtDateTime(user.created_at))}</div>
+        </div>
+        <div class="admin-user__actions">${actions.join('')}</div>
+      </article>`;
+    }).join('');
+  }
+
+  async function loadAdminUsers() {
+    if (!isAdminUser()) return;
+
+    hideAdminError();
+    el.adminUserList.innerHTML = '<p class="admin-empty">Carregando usuários…</p>';
+
+    try {
+      const { data, error } = await supabaseClient()
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      state.adminUsers = data || [];
+      renderAdminUsers();
+    } catch (err) {
+      el.adminUserList.innerHTML = '<p class="admin-empty">Não foi possível carregar os usuários.</p>';
+      showAdminError(err.message || 'Erro ao carregar usuários.');
+    }
+  }
+
+  async function openAdmin() {
+    if (!isAdminUser()) {
+      toast('Acesso restrito a administradores.', 'error');
+      return;
+    }
+
+    state.adminUsers = [];
+    setAdminFilter('pending');
+    openOverlay('admin');
+    await loadAdminUsers();
+  }
+
+  async function updateAdminUser(id, kind, value) {
+    if (!isAdminUser()) return;
+
+    hideAdminError();
+    const buttons = el.adminUserList.querySelectorAll('button');
+    buttons.forEach((button) => { button.disabled = true; });
+
+    try {
+      const rpc = kind === 'status' ? 'admin_set_user_status' : 'admin_set_user_role';
+      const params = kind === 'status'
+        ? { p_id: id, p_status: value }
+        : { p_id: id, p_role: value };
+
+      const { error } = await supabaseClient().rpc(rpc, params);
+      if (error) throw error;
+
+      await loadAdminUsers();
+
+      if (kind === 'status') {
+        toast(value === 'approved' ? 'Usuário aprovado.' : 'Status do usuário atualizado.', 'success');
+      } else {
+        toast('Papel do usuário atualizado.', 'success');
+      }
+    } catch (err) {
+      showAdminError(err.message || 'Não foi possível atualizar o usuário.');
+      buttons.forEach((button) => { button.disabled = false; });
+    }
+  }
+
+  async function handleAdminAction(action, id) {
+    const user = state.adminUsers.find((item) => item.id === id);
+    if (!user) return;
+
+    if (action === 'approve') {
+      await updateAdminUser(id, 'status', 'approved');
+      return;
+    }
+
+    if (action === 'reject') {
+      if (!window.confirm(`Recusar o acesso de ${user.name || user.email}?`)) return;
+      await updateAdminUser(id, 'status', 'rejected');
+      return;
+    }
+
+    if (action === 'toggle-role') {
+      const nextRole = user.role === 'admin' ? 'resident' : 'admin';
+      const label = nextRole === 'admin' ? 'tornar administrador' : 'remover o acesso de administrador';
+      if (!window.confirm(`Deseja ${label} de ${user.name || user.email}?`)) return;
+      await updateAdminUser(id, 'role', nextRole);
+    }
+  }
+
   /* ---------------- Eventos ---------------- */
 
   function bindEvents() {
@@ -1263,6 +1570,18 @@
     el.loginForm.addEventListener('submit', submitLogin);
     el.signupForm.addEventListener('submit', submitSignup);
     el.logoutBtn.addEventListener('click', logout);
+    el.approvalRefresh.addEventListener('click', refreshApproval);
+    el.approvalLogout.addEventListener('click', logout);
+
+    el.adminBtn.addEventListener('click', openAdmin);
+    el.adminRefresh.addEventListener('click', loadAdminUsers);
+    el.adminFilterPending.addEventListener('click', () => setAdminFilter('pending'));
+    el.adminFilterAll.addEventListener('click', () => setAdminFilter('all'));
+    el.adminUserList.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-admin-action]');
+      if (!button) return;
+      handleAdminAction(button.dataset.adminAction, button.dataset.id);
+    });
 
     document.addEventListener('click', (event) => {
       const trigger = event.target.closest('#profileBtn, #userName');

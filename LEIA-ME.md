@@ -28,8 +28,11 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
    - nome completo;
    - e-mail;
    - senha (mínimo 6 caracteres, repetida para confirmação).
-3. O Supabase envia um **e-mail de confirmação**. Depois de confirmar, basta entrar com e-mail e senha.
+3. O Supabase envia um **e-mail de confirmação**. Depois de confirmar, o cadastro fica **pendente** até que o administrador aprove.
 4. Sem login, o calendário não é carregado — só a tela de acesso aparece.
+5. Usuários pendentes ou recusados veem uma tela de status e não conseguem reservar.
+
+**Administrador:** o e-mail **brunosilveira@grupoemon.com.br** é definido como administrador. Se ainda não existir conta com ele, crie uma em **Criar conta**; ela já nasce como administrador. O administrador vê o painel **Administração** na barra lateral, onde aprova, recusa e define papéis.
 
 **Quem pode cancelar:** somente o morador que fez a reserva. A interface esconde o botão para os demais, e o banco também bloqueia a operação.
 
@@ -42,6 +45,8 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 ## O que o aplicativo faz
 
 - Cadastro, confirmação de e-mail e login.
+- **Aprovação de moradores:** novo cadastro fica pendente até o administrador aprovar.
+- **Painel de administração** (somente administradores): aprovar, recusar, promover/rebaixar usuários.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
@@ -61,7 +66,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 | Onde | O que fica |
 | --- | --- |
 | Supabase → `auth.users` | Contas (e-mail e senha criptografada) |
-| Supabase → `public.profiles` | Nome, e-mail, apartamento, bloco e telefone de cada morador |
+| Supabase → `public.profiles` | Nome, e-mail, apartamento, bloco, telefone, papel (`admin`/`resident`) e status (`pending`/`approved`/`rejected`) |
 | Supabase → `public.reservations` | Reservas, vinculadas ao usuário (`user_id`) |
 | `data/reservations.json` | Apenas o servidor local opcional (`server.js`) |
 
@@ -71,14 +76,14 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 ## Regras e limites atuais
 
-- O cadastro está **aberto**: qualquer pessoa com o link pode criar uma conta. Para permitir somente moradores, desative **Authentication → Providers → Email → Allow new users to sign up** no Supabase, ou peça uma aprovação de cadastro.
-- A confirmação de e-mail verifica que a pessoa tem acesso àquele e-mail, mas não que ela mora no condomínio.
-- Não há recuperação de senha na interface. Se um morador esquecer a senha, o síndico pode redefini-la em **Authentication → Users**.
-- Não há painel de administração nem aprovação de reservas.
+- O cadastro está **aberto**, mas todo novo usuário entra como **pendente** e só acessa após aprovação do administrador.
+- O administrador é **brunosilveira@grupoemon.com.br**. Para esse e-mail, o cadastro já nasce aprovado como administrador.
+- Contas que já existiam antes da migração foram aprovadas automaticamente para não perderem o acesso.
+- A exclusão da conta é definitiva e apaga também as reservas do morador.
+- Não há recuperação de senha na interface; o administrador pode redefinir em **Authentication → Users**.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 - Limite de **40 pessoas** por reserva.
 - Sem controle de horário: a reserva é para o dia inteiro.
-- A exclusão da conta é definitiva e apaga também as reservas do morador.
 
 ---
 
@@ -93,8 +98,9 @@ agendamento-area-gourmet/
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase
 ├── supabase/
-│   ├── schema.sql              Tabelas, perfis, RLS e funções
-│   └── migration-perfil.sql    Campos de perfil para bancos já existentes
+│   ├── schema.sql              Tabelas, perfis, RLS, aprovação e administração
+│   ├── migration-perfil.sql    Campos de perfil para bancos já existentes
+│   └── migration-admin.sql     Papéis e aprovação para bancos já existentes
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── README.md                   Visão geral para o GitHub
@@ -125,7 +131,10 @@ agendamento-area-gourmet/
 | “E-mail ou senha incorretos” | Confira a senha; o síndico pode redefini-la em Authentication → Users. |
 | “Este e-mail já está cadastrado” | Use **Entrar** ou recupere a senha pelo painel do Supabase. |
 | “Módulo de perfil ainda não foi ativado” | Execute `supabase/migration-perfil.sql` no SQL Editor do Supabase. |
-| Dados do perfil não salvam | Confirme se o SQL de perfil foi executado e se o morador está logado. |
+| “Acesso em análise” após entrar | O administrador ainda não aprovou o cadastro. Peça a aprovação e clique em **Verificar aprovação**. |
+| Não aparece o painel **Administração** | Entre com o e-mail de administrador (`brunosilveira@grupoemon.com.br`) e confirme se o SQL de administração foi executado. |
+| “Acesso não autorizado” | O administrador recusou o cadastro; ele pode aprovar novamente no painel. |
+| Perfil não salva | Confirme se os SQLs de perfil e administração foram executados e se o morador está logado. |
 | Site publicado abre em “Modo local” | O `config.js` está vazio ou a página foi aberta como arquivo (`file://`). Use o link publicado. |
 | Calendário vazio para todos | Verifique se o projeto do Supabase está ativo (não pausado). |
 | Morador não consegue cancelar | Só o dono da reserva pode cancelar; confirme se ele está na conta correta. |

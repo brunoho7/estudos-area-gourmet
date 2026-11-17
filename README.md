@@ -13,6 +13,8 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Acesso e segurança
 
 - Cadastro com **nome, e-mail e senha**; o e-mail precisa ser confirmado.
+- Todo novo cadastro nasce como **morador pendente** e só entra depois da aprovação do administrador.
+- O administrador é **brunosilveira@grupoemon.com.br**.
 - Cada morador pode editar no **Meu perfil**: nome, nº do apartamento, bloco e telefone.
 - Pode também **excluir a própria conta**, o que apaga perfil e reservas.
 - Sem login, o aplicativo mostra apenas a tela de acesso — o calendário não é carregado.
@@ -24,6 +26,8 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Como funciona
 
 - Login, cadastro e confirmação de e-mail.
+- **Aprovação de moradores** pelo administrador: pendente, aprovado ou recusado.
+- **Painel de administração** (visível apenas para administradores) para aprovar, recusar e definir papéis.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
@@ -50,8 +54,9 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase (v2)
 ├── supabase/
-│   ├── schema.sql              Tabelas, perfis, RLS e funções
-│   └── migration-perfil.sql    Migração dos campos do perfil (bancos já existentes)
+│   ├── schema.sql              Tabelas, perfis, RLS, aprovação e administração
+│   ├── migration-perfil.sql    Campos do perfil (bancos já existentes)
+│   └── migration-admin.sql     Papéis e aprovação (bancos já existentes)
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── LEIA-ME.md                  Manual completo em português
@@ -61,7 +66,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Configurar o Supabase
 
 1. Crie um projeto em <https://supabase.com>.
-2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql). Se o banco já existia antes dos campos de perfil, execute também [`supabase/migration-perfil.sql`](supabase/migration-perfil.sql).
+2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql). Se o banco já existia antes dos campos de perfil, execute também [`supabase/migration-perfil.sql`](supabase/migration-perfil.sql); antes da aprovação/administração, execute [`supabase/migration-admin.sql`](supabase/migration-admin.sql).
 3. Em **Project Settings > API**, copie a **Project URL** e a chave **publishable** (ou **anon public**).
 4. Em **Authentication > URL Configuration**, defina:
    - **Site URL:** `https://SEU-USUARIO.github.io/SEU-REPO/`
@@ -83,7 +88,8 @@ Com o `config.js` preenchido, o `iniciar.bat`/`server.js` servem a mesma versão
 
 ## Limitações
 
-- O cadastro está **aberto**: qualquer pessoa com o link pode criar uma conta. Para restringir a moradores, desative **Authentication > Providers > Email > Allow new users to sign up** ou implemente aprovação do síndico.
+- O cadastro está **aberto**, mas todo novo usuário fica **pendente** até a aprovação do administrador.
+- O administrador é definido pelo e-mail **brunosilveira@grupoemon.com.br**. Se ainda não houver conta com esse e-mail, crie uma em **Criar conta**; ela nasce como administrador.
 - A exclusão da conta é definitiva: apaga perfil, reservas e o usuário do Supabase Auth.
 - Não há recuperação de senha na interface (pode ser adicionada com o Supabase Auth).
 - Não há painel de administração.

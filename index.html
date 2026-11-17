@@ -7,7 +7,7 @@
   <meta name="description" content="Agendamento da área gourmet do condomínio: veja os dias livres, reserve e cancele sua reserva.">
   <meta name="theme-color" content="#143d2e">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23143d2e'/><path d='M35 24v22a8 8 0 0 0 8 8h0a8 8 0 0 0 8-8V24M43 54v24' stroke='%23f0c9a8' stroke-width='6' stroke-linecap='round' fill='none'/><path d='M68 24c-8 12-8 24 0 30v24' stroke='%23f0c9a8' stroke-width='6' stroke-linecap='round' fill='none'/></svg>">
-  <link rel="stylesheet" href="assets/styles.css?v=20261117-2">
+  <link rel="stylesheet" href="assets/styles.css?v=20261117-3">
 </head>
 <body>
   <div id="bootScreen" class="boot-screen">
@@ -186,7 +186,7 @@
     </main>
 
     <footer class="footer">
-      <span>Área Gourmet · Agendamento do condomínio · v2026-11-17.2</span>
+      <span>Área Gourmet · Agendamento do condomínio · v2026-11-17.3</span>
       <span id="footerData">Dados salvos em <code>data/reservations.json</code></span>
     </footer>
   </div>
@@ -213,6 +213,8 @@
         </div>
       </div>
 
+      <p id="bookingProfileHint" class="booking-hint" hidden></p>
+
       <form id="bookingForm" novalidate>
         <p id="formError" class="form-error" role="alert" hidden></p>
 
@@ -227,20 +229,25 @@
             <input id="fApt" name="apartment" type="text" maxlength="20" placeholder="Ex.: 101-B" required>
           </div>
           <div class="field">
-            <label for="fPhone">Telefone (opcional)</label>
-            <input id="fPhone" name="phone" type="tel" maxlength="30" inputmode="tel" placeholder="(11) 99999-0000">
+            <label for="fBlock">Bloco</label>
+            <input id="fBlock" type="text" maxlength="20" placeholder="—" readonly>
           </div>
         </div>
 
         <div class="grid-2">
           <div class="field">
+            <label for="fPhone">Telefone (opcional)</label>
+            <input id="fPhone" name="phone" type="tel" maxlength="30" inputmode="tel" placeholder="(11) 99999-0000">
+          </div>
+          <div class="field">
             <label for="fGuests">Nº de pessoas</label>
             <input id="fGuests" name="guests" type="number" min="1" max="40" value="10" required>
           </div>
-          <div class="field">
-            <label for="fNotes">Observações (opcional)</label>
-            <input id="fNotes" name="notes" type="text" maxlength="120" placeholder="Ex.: aniversário">
-          </div>
+        </div>
+
+        <div class="field">
+          <label for="fNotes">Observações (opcional)</label>
+          <input id="fNotes" name="notes" type="text" maxlength="120" placeholder="Ex.: aniversário">
         </div>
       </form>
 
@@ -343,8 +350,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="assets/vendor/supabase.js?v=20261117-2"></script>
-  <script src="config.js?v=20261117-2"></script>
-  <script src="assets/app.js?v=20261117-2"></script>
+  <script src="assets/vendor/supabase.js?v=20261117-3"></script>
+  <script src="config.js?v=20261117-3"></script>
+  <script src="assets/app.js?v=20261117-3"></script>
 </body>
 </html>

@@ -131,6 +131,7 @@
     month: new Date().getMonth(),
     identity: readJSON(KEY_USER, null),
     user: null,
+    profile: null,
     activeDate: null,
     activeId: null,
     busy: false
@@ -179,9 +180,11 @@
     formError: document.getElementById('formError'),
     fName: document.getElementById('fName'),
     fApt: document.getElementById('fApt'),
+    fBlock: document.getElementById('fBlock'),
     fPhone: document.getElementById('fPhone'),
     fGuests: document.getElementById('fGuests'),
     fNotes: document.getElementById('fNotes'),
+    bookingProfileHint: document.getElementById('bookingProfileHint'),
     bookingDateLong: document.getElementById('bookingDateLong'),
     bookingSubmit: document.getElementById('bookingSubmit'),
     calendarGrid: document.getElementById('calendarGrid'),
@@ -561,10 +564,18 @@
     button.textContent = busy ? 'Aguarde…' : idleLabel;
   }
 
-  function openBooking(iso) {
+  async function openBooking(iso) {
     if (iso < state.today) {
       toast('Essa data já passou. Escolha outro dia.', 'warn');
       return;
+    }
+
+    if (state.mode === 'supabase' && !state.profile) {
+      try {
+        state.profile = await loadMyProfile();
+      } catch (err) {
+        state.profile = null;
+      }
     }
 
     state.activeDate = iso;
@@ -575,18 +586,29 @@
     el.fNotes.value = '';
 
     if (state.mode === 'supabase') {
-      el.fName.value = currentUserName();
+      const profile = state.profile || {};
+
+      el.fName.value = profile.name || currentUserName();
       el.fName.readOnly = true;
       el.fName.setAttribute('aria-readonly', 'true');
-      el.fApt.value = '';
-      el.fPhone.value = '';
+
+      el.fApt.value = profile.apartment || '';
+      el.fBlock.value = profile.block || '';
+      el.fPhone.value = profile.phone || '';
+
+      el.bookingProfileHint.hidden = false;
+      el.bookingProfileHint.textContent = (profile.apartment || profile.block || profile.phone)
+        ? 'Dados carregados do seu perfil. Você pode ajustar esta reserva; para alterar permanentemente, use Meu perfil.'
+        : 'Seu perfil ainda não tem apartamento, bloco ou telefone. Preencha em Meu perfil para agilizar as próximas reservas.';
     } else {
       el.fName.readOnly = false;
       el.fName.removeAttribute('aria-readonly');
       const identity = state.identity || {};
       el.fName.value = identity.name || '';
       el.fApt.value = identity.apartment || '';
+      el.fBlock.value = '';
       el.fPhone.value = identity.phone || '';
+      el.bookingProfileHint.hidden = true;
     }
 
     setBusy(el.bookingSubmit, false, 'Confirmar reserva');
@@ -683,6 +705,19 @@
     el.profileSubmit.textContent = busy ? 'Salvando…' : 'Salvar meus dados';
   }
 
+  async function loadMyProfile() {
+    if (!state.user) return null;
+
+    const { data, error } = await supabaseClient()
+      .from('profiles')
+      .select('name,apartment,block,phone')
+      .eq('id', state.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  }
+
   async function openProfile() {
     if (!state.user) return;
 
@@ -699,14 +734,9 @@
     setTimeout(() => el.profileName.focus(), 40);
 
     try {
-      const { data, error } = await supabaseClient()
-        .from('profiles')
-        .select('name,apartment,block,phone')
-        .eq('id', state.user.id)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await loadMyProfile();
       if (data) {
+        state.profile = data;
         el.profileName.value = data.name || currentUserName();
         el.profileApartment.value = data.apartment || '';
         el.profileBlock.value = data.block || '';
@@ -743,13 +773,16 @@
 
     setProfileBusy(true);
     try {
-      const { error } = await supabaseClient().rpc('save_my_profile', {
+      const { data, error } = await supabaseClient().rpc('save_my_profile', {
         p_name: name,
         p_apartment: apartment,
         p_block: block,
         p_phone: phone
       });
       if (error) throw error;
+
+      const saved = Array.isArray(data) ? data[0] : data;
+      if (saved) state.profile = saved;
 
       try {
         await authClient.auth.updateUser({ data: { name } });
@@ -1039,6 +1072,7 @@
     el.appRoot.hidden = true;
     el.authGate.hidden = false;
     el.userBox.hidden = true;
+    state.profile = null;
     if (pollingTimer) {
       clearInterval(pollingTimer);
       pollingTimer = null;
@@ -1073,6 +1107,12 @@
         setTimeout(() => {
           toast(err.message || 'Não foi possível carregar as reservas.', 'error');
         }, 400);
+      }
+
+      try {
+        state.profile = await loadMyProfile();
+      } catch (err) {
+        state.profile = null;
       }
 
       const today = parseISO(state.today);

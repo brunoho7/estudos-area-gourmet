@@ -11,9 +11,21 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 ---
 
-## Como usar
+## Versão publicada na web
 
-### Opção 1 — Compartilhado entre os moradores (recomendado)
+O aplicativo está no ar em:
+
+**https://brunoho7.github.io/estudos-area-gourmet/**
+
+As reservas ficam no Supabase e são compartilhadas por todos que abrem o link. Não é preciso deixar nenhum computador ligado. O código fica em **https://github.com/brunoho7/estudos-area-gourmet** (branch `main`; o GitHub Pages publica automaticamente a cada envio).
+
+---
+
+## Como usar localmente
+
+Para o dia a dia, use o link publicado. As opções abaixo servem para rodar o app no seu computador.
+
+### Opção 1 — Servidor local compartilhado (alternativa)
 
 1. Dê **duplo clique em `iniciar.bat`**.
 2. O navegador abre em `http://localhost:3000`.
@@ -55,12 +67,13 @@ Dê **duplo clique em `index.html`**. O app funciona, mas as reservas ficam salv
 
 | Modo | Onde fica |
 | --- | --- |
-| Compartilhado (`iniciar.bat`) | `data/reservations.json` |
+| Publicado (GitHub Pages) | Supabase — tabela `public.reservations` |
+| Servidor local (`iniciar.bat`) | `data/reservations.json` |
 | Local (`index.html`) | Armazenamento do próprio navegador (localStorage) |
 
-**Backup:** com o servidor parado, copie o arquivo `data/reservations.json` para outro lugar. Para restaurar, basta colocá-lo de volta na pasta `data`.
+**Backup:** no modo publicado, use os backups do painel do Supabase (Database → Backups). No modo local, com o servidor parado, copie o arquivo `data/reservations.json` para outro lugar.
 
-O arquivo começa vazio (`{"reservations": []}`). As reservas são gravadas automaticamente a cada reserva/cancelamento.
+No modo publicado não existe arquivo local de reservas; o `data/reservations.json` é usado apenas pelo servidor Node.
 
 ---
 
@@ -70,8 +83,9 @@ O arquivo começa vazio (`{"reservations": []}`). As reservas são gravadas auto
 - Os nomes e apartamentos ficam visíveis para todos que acessam o endereço.
 - Limite de **40 pessoas** por reserva (pode ser alterado no código).
 - Sem controle de horário: a reserva é para o dia inteiro. Se precisar de períodos (almoço/jantar), é possível evoluir.
-- O servidor precisa estar ligado para o modo compartilhado funcionar.
-- Para acesso pela internet (fora do Wi-Fi), o ideal é publicar o projeto em uma hospedagem; abrir porta no roteador exige cuidados de segurança.
+- O servidor local precisa estar ligado para o modo compartilhado por rede funcionar. Na versão publicada, não.
+- A versão publicada funciona pela internet; o modo local (`iniciar.bat`) atende apenas a mesma rede Wi-Fi.
+- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel do Supabase.
 
 ---
 
@@ -80,15 +94,19 @@ O arquivo começa vazio (`{"reservations": []}`). As reservas são gravadas auto
 ```
 agendamento-area-gourmet/
 ├── index.html              Interface (calendário, modais, textos)
+├── config.js               URL + chave publishable do Supabase
 ├── assets/
 │   ├── styles.css          Visual do aplicativo
 │   └── app.js              Lógica do calendário, reservas e cancelamentos
+├── supabase/
+│   └── schema.sql          Tabela, RLS e funções do banco
 ├── server.js               Servidor local + API (sem dependências externas)
-├── iniciar.bat             Atalho para iniciar o modo compartilhado
+├── iniciar.bat             Atalho para iniciar o servidor local
 ├── package.json            Metadados e comando "npm start"
+├── README.md               Visão geral para o GitHub
 ├── LEIA-ME.md              Este arquivo
 └── data/
-    └── reservations.json   Reservas (criado automaticamente)
+    └── reservations.json   Reservas do servidor local (criado automaticamente)
 ```
 
 ---
@@ -98,9 +116,10 @@ agendamento-area-gourmet/
 - **Nome do condomínio / título:** edite o cabeçalho em `index.html`.
 - **Regras exibidas no site:** edite a seção “Como funciona” em `index.html`.
 - **Cores e fontes:** edite as variáveis no início de `assets/styles.css` (`:root`).
-- **Limite de pessoas:** ajuste `MAX_GUESTS` em `assets/app.js` e em `server.js` (os dois precisam ficar iguais).
+- **Limite de pessoas:** ajuste `MAX_GUESTS` em `assets/app.js`, em `server.js` e em `supabase/schema.sql` (os três precisam ficar iguais).
+- **Regras de validação:** além do `server.js`, ajuste as funções em `supabase/schema.sql` e execute o SQL novamente.
 - **Porta do servidor:** execute `set PORT=8080` antes de `node server.js` ou acrescente essa linha no `iniciar.bat`.
-- **Horário de funcionamento / regras de uso:** podem ser incluídos no formulário e nas validações do `server.js`.
+- **Horário de funcionamento / regras de uso:** podem ser incluídos no formulário e nas validações do `server.js` e do schema do Supabase.
 
 ---
 
@@ -110,9 +129,11 @@ agendamento-area-gourmet/
 | --- | --- |
 | “Node.js nao foi encontrado” | Instale o Node.js LTS em <https://nodejs.org> e execute o `iniciar.bat` de novo. |
 | “A porta 3000 ja esta em uso” | Feche o outro programa ou use `set PORT=3001` antes de iniciar. |
-| Outros moradores não acessam | Confirme o IP mostrado na janela do servidor, se estão no mesmo Wi-Fi e se o firewall do Windows liberou o Node.js em redes privadas. |
-| Calendário não atualiza | Verifique se a janela do servidor continua aberta. |
-| Abri o `index.html` e ninguém vê minha reserva | Isso é o modo local. Use o `iniciar.bat` para compartilhar. |
+| Outros moradores não acessam o servidor local | Confirme o IP mostrado na janela, se estão no mesmo Wi-Fi e se o firewall liberou o Node.js em redes privadas. |
+| Site publicado abre em “Modo local” | Confira se o `config.js` tem a URL e a chave publishable do Supabase e recarregue a página sem cache. |
+| Site publicado não mostra as reservas | O projeto do Supabase pode estar pausado ou o `supabase/schema.sql` não foi executado. Verifique no painel do Supabase. |
+| Calendário local não atualiza | Verifique se a janela do servidor continua aberta. |
+| Abri o `index.html` e ninguém vê minha reserva | Isso é o modo local. Use o link publicado para compartilhar. |
 
 ---
 
@@ -122,4 +143,4 @@ agendamento-area-gourmet/
 - Reserva por período (almoço, jantar, dia inteiro).
 - Aprovação de reservas e lista de espera.
 - Notificações por e-mail/WhatsApp.
-- Publicação em nuvem para acesso fora do condomínio.
+- Domínio próprio no lugar do endereço `github.io`.

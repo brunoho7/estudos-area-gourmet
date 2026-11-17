@@ -7,7 +7,8 @@ Todos veem no calendário os dias reservados e quem reservou.
 
 O site fica no **GitHub Pages** e as reservas são compartilhadas pelo **Supabase**:
 
-- **Site:** _(preencher após a publicação)_
+- **Site:** https://brunoho7.github.io/estudos-area-gourmet/
+- **Código:** https://github.com/brunoho7/estudos-area-gourmet
 - **Banco:** Supabase (tabela `public.reservations` + funções `create_reservation` e `cancel_reservation`)
 
 ## Como funciona
@@ -25,7 +26,7 @@ O site fica no **GitHub Pages** e as reservas são compartilhadas pelo **Supabas
 - **Hospedagem:** GitHub Pages.
 - **Servidor local opcional:** `server.js` (Node.js, sem dependências) para uso offline/Docker.
 
-A chave `anon` do Supabase é pública por design. Quem protege os dados são as políticas de RLS e as funções SQL em [`supabase/schema.sql`](supabase/schema.sql). Nunca coloque a chave `service_role` no site.
+A chave `publishable` (ou `anon public`) do Supabase é pública por design. Quem protege os dados são as políticas de RLS e as funções SQL em [`supabase/schema.sql`](supabase/schema.sql). Nunca coloque a chave `service_role` no site.
 
 ## Rodar localmente
 
@@ -39,13 +40,13 @@ Sem Node, abra `index.html` direto: o app funciona em modo local (dados só naqu
 
 1. Crie um projeto em <https://supabase.com>.
 2. No **SQL Editor**, execute o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
-3. Em **Project Settings > API**, copie a **Project URL** e a chave **anon public**.
+3. Em **Project Settings > API**, copie a **Project URL** e a chave **publishable** (ou **anon public**).
 4. Preencha [`config.js`](config.js):
 
 ```js
 window.APP_CONFIG = {
   supabaseUrl: 'https://SEU-PROJETO.supabase.co',
-  supabaseAnonKey: 'SUA-CHAVE-ANON'
+  supabaseAnonKey: 'SUA-CHAVE-PUBLISHABLE'
 };
 ```
 
@@ -70,4 +71,8 @@ window.APP_CONFIG = {
 
 - Não há login de morador; o cancelamento é validado por nome + apartamento.
 - Os nomes e apartamentos ficam visíveis para quem tem o link.
-- O plano gratuito do Supabase pode pausar o projeto por inatividade; um ping diário via GitHub Actions evita isso (opcional).
+- O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; basta reativá-lo no painel do Supabase.
+
+## Atualizar o site
+
+Edite os arquivos e envie para a branch `main` do repositório. O GitHub Pages publica a nova versão automaticamente em alguns minutos.

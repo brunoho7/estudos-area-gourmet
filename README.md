@@ -13,6 +13,8 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Acesso e segurança
 
 - Cadastro com **nome, e-mail e senha**; o e-mail precisa ser confirmado.
+- Cada morador pode editar no **Meu perfil**: nome, nº do apartamento, bloco e telefone.
+- Pode também **excluir a própria conta**, o que apaga perfil e reservas.
 - Sem login, o aplicativo mostra apenas a tela de acesso — o calendário não é carregado.
 - As reservas ficam visíveis somente para usuários autenticados.
 - Cada morador pode cancelar **apenas as próprias reservas**.
@@ -22,6 +24,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Como funciona
 
 - Login, cadastro e confirmação de e-mail.
+- **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
 - Uma reserva por dia; datas passadas bloqueadas.
@@ -46,7 +49,8 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase (v2)
 ├── supabase/
-│   └── schema.sql              Tabelas, perfis, RLS e funções
+│   ├── schema.sql              Tabelas, perfis, RLS e funções
+│   └── migration-perfil.sql    Migração dos campos do perfil (bancos já existentes)
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── LEIA-ME.md                  Manual completo em português
@@ -56,7 +60,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Configurar o Supabase
 
 1. Crie um projeto em <https://supabase.com>.
-2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
+2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql). Se o banco já existia antes dos campos de perfil, execute também [`supabase/migration-perfil.sql`](supabase/migration-perfil.sql).
 3. Em **Project Settings > API**, copie a **Project URL** e a chave **publishable** (ou **anon public**).
 4. Em **Authentication > URL Configuration**, defina:
    - **Site URL:** `https://SEU-USUARIO.github.io/SEU-REPO/`
@@ -79,6 +83,7 @@ Com o `config.js` preenchido, o `iniciar.bat`/`server.js` servem a mesma versão
 ## Limitações
 
 - O cadastro está **aberto**: qualquer pessoa com o link pode criar uma conta. Para restringir a moradores, desative **Authentication > Providers > Email > Allow new users to sign up** ou implemente aprovação do síndico.
+- A exclusão da conta é definitiva: apaga perfil, reservas e o usuário do Supabase Auth.
 - Não há recuperação de senha na interface (pode ser adicionada com o Supabase Auth).
 - Não há painel de administração.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.

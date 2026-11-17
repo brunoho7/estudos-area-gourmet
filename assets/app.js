@@ -160,7 +160,18 @@
     appRoot: document.getElementById('appRoot'),
     userBox: document.getElementById('userBox'),
     userName: document.getElementById('userName'),
+    profileBtn: document.getElementById('profileBtn'),
     logoutBtn: document.getElementById('logoutBtn'),
+    profileModal: document.getElementById('profileModal'),
+    profileForm: document.getElementById('profileForm'),
+    profileError: document.getElementById('profileError'),
+    profileName: document.getElementById('profileName'),
+    profileEmail: document.getElementById('profileEmail'),
+    profileApartment: document.getElementById('profileApartment'),
+    profileBlock: document.getElementById('profileBlock'),
+    profilePhone: document.getElementById('profilePhone'),
+    profileSubmit: document.getElementById('profileSubmit'),
+    profileDelete: document.getElementById('profileDelete'),
     overlay: document.getElementById('overlay'),
     bookingModal: document.getElementById('bookingModal'),
     detailsModal: document.getElementById('detailsModal'),
@@ -514,6 +525,7 @@
     el.overlay.hidden = false;
     el.bookingModal.hidden = which !== 'booking';
     el.detailsModal.hidden = which !== 'details';
+    el.profileModal.hidden = which !== 'profile';
     document.body.classList.add('modal-open');
   }
 
@@ -522,6 +534,7 @@
     el.overlay.hidden = true;
     el.bookingModal.hidden = true;
     el.detailsModal.hidden = true;
+    el.profileModal.hidden = true;
     document.body.classList.remove('modal-open');
     state.activeDate = null;
     state.activeId = null;
@@ -642,6 +655,153 @@
       if (mine) el.cancelBtn.focus();
       else if (!authMode) el.cName.focus();
     }, 40);
+  }
+
+  /* ---------------- Perfil do morador ---------------- */
+
+  function profileSetupMessage(error) {
+    const message = String((error && error.message) || '');
+    if (/could not find the function|schema cache|does not exist/i.test(message)) {
+      return 'O módulo de perfil ainda não foi ativado no banco. Execute o script SQL de migração e tente novamente.';
+    }
+    return message || 'Não foi possível concluir a operação com o perfil.';
+  }
+
+  function showProfileError(message) {
+    el.profileError.textContent = message;
+    el.profileError.hidden = false;
+  }
+
+  function hideProfileError() {
+    el.profileError.textContent = '';
+    el.profileError.hidden = true;
+  }
+
+  function setProfileBusy(busy) {
+    el.profileSubmit.disabled = busy;
+    el.profileSubmit.classList.toggle('is-loading', busy);
+    el.profileSubmit.textContent = busy ? 'Salvando…' : 'Salvar meus dados';
+  }
+
+  async function openProfile() {
+    if (!state.user) return;
+
+    hideProfileError();
+    el.profileName.value = currentUserName();
+    el.profileEmail.value = state.user.email || '';
+    el.profileApartment.value = '';
+    el.profileBlock.value = '';
+    el.profilePhone.value = '';
+    el.profileDelete.disabled = false;
+    setProfileBusy(false);
+
+    openOverlay('profile');
+    setTimeout(() => el.profileName.focus(), 40);
+
+    try {
+      const { data, error } = await supabaseClient()
+        .from('profiles')
+        .select('name,apartment,block,phone')
+        .eq('id', state.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        el.profileName.value = data.name || currentUserName();
+        el.profileApartment.value = data.apartment || '';
+        el.profileBlock.value = data.block || '';
+        el.profilePhone.value = data.phone || '';
+      }
+    } catch (err) {
+      /* o formulário continua utilizável; o erro aparecerá ao salvar */
+    }
+  }
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    if (!state.user) return;
+
+    hideProfileError();
+
+    const name = el.profileName.value.trim();
+    const apartment = el.profileApartment.value.trim();
+    const block = el.profileBlock.value.trim();
+    const phone = el.profilePhone.value.trim();
+
+    if (name.length < 3) {
+      showProfileError('Informe seu nome completo (pelo menos 3 letras).');
+      return;
+    }
+    if (apartment.length > 20 || block.length > 20) {
+      showProfileError('Apartamento e bloco devem ter até 20 caracteres.');
+      return;
+    }
+    if (phone.length > 30) {
+      showProfileError('O telefone deve ter até 30 caracteres.');
+      return;
+    }
+
+    setProfileBusy(true);
+    try {
+      const { error } = await supabaseClient().rpc('save_my_profile', {
+        p_name: name,
+        p_apartment: apartment,
+        p_block: block,
+        p_phone: phone
+      });
+      if (error) throw error;
+
+      state.user.user_metadata = Object.assign({}, state.user.user_metadata, { name });
+      el.userName.textContent = name;
+      closeModal();
+      toast('Dados do perfil atualizados.', 'success');
+    } catch (err) {
+      showProfileError(profileSetupMessage(err));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function deleteMyAccount() {
+    if (!state.user) return;
+
+    if (!window.confirm('Excluir sua conta? Seu perfil e todas as suas reservas serão apagados permanentemente.')) {
+      return;
+    }
+
+    const typed = window.prompt('Digite EXCLUIR para confirmar a exclusão da conta:');
+    if (String(typed || '').trim().toUpperCase() !== 'EXCLUIR') {
+      toast('Exclusão cancelada.', 'warn');
+      return;
+    }
+
+    hideProfileError();
+    el.profileDelete.disabled = true;
+    el.profileDelete.classList.add('is-loading');
+    el.profileDelete.textContent = 'Excluindo…';
+
+    try {
+      const { error } = await supabaseClient().rpc('delete_my_account');
+      if (error) throw error;
+
+      try {
+        await authClient.auth.signOut({ scope: 'local' });
+      } catch (err) {
+        /* a conta já foi removida; a sessão local é limpa abaixo */
+      }
+
+      state.user = null;
+      state.reservations = [];
+      closeModal();
+      showAuthGate();
+      toast('Sua conta foi excluída.', 'success');
+    } catch (err) {
+      showProfileError(profileSetupMessage(err));
+    } finally {
+      el.profileDelete.disabled = false;
+      el.profileDelete.classList.remove('is-loading');
+      el.profileDelete.textContent = 'Excluir minha conta';
+    }
   }
 
   /* ---------------- Ações ---------------- */
@@ -1057,6 +1217,13 @@
     el.loginForm.addEventListener('submit', submitLogin);
     el.signupForm.addEventListener('submit', submitSignup);
     el.logoutBtn.addEventListener('click', logout);
+    el.profileBtn.addEventListener('click', openProfile);
+    el.profileForm.addEventListener('submit', saveProfile);
+    el.profileDelete.addEventListener('click', deleteMyAccount);
+
+    [el.profileName, el.profileApartment, el.profileBlock, el.profilePhone].forEach((input) => {
+      input.addEventListener('input', hideProfileError);
+    });
 
     [el.loginEmail, el.loginPassword].forEach((input) => {
       input.addEventListener('input', () => authHideError(el.loginError));

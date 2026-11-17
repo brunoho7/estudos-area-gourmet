@@ -127,6 +127,7 @@
         </span>
         <div id="userBox" class="user-box" hidden>
           <span id="userName" class="user-box__name"></span>
+          <button id="profileBtn" class="btn btn--ghost btn--xs" type="button">Perfil</button>
           <button id="logoutBtn" class="btn btn--ghost btn--xs" type="button">Sair</button>
         </div>
         <button id="todayBtn" class="btn btn--ghost" type="button">Ir para hoje</button>
@@ -282,6 +283,60 @@
 
       <div class="modal__actions modal__actions--end">
         <button type="button" class="btn btn--ghost" data-close>Fechar</button>
+      </div>
+    </div>
+
+    <!-- Meu perfil -->
+    <div id="profileModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle" hidden>
+      <div class="modal__head">
+        <div>
+          <p class="modal__eyebrow">Minha conta</p>
+          <h2 id="profileTitle">Meu perfil</h2>
+        </div>
+        <button type="button" class="close-btn" data-close aria-label="Fechar">&#10005;</button>
+      </div>
+
+      <p class="profile-sub">Mantenha seus dados atualizados. O nome e o apartamento aparecem nas reservas para os outros moradores.</p>
+
+      <form id="profileForm" novalidate>
+        <p id="profileError" class="form-error" role="alert" hidden></p>
+
+        <div class="field">
+          <label for="profileName">Nome completo</label>
+          <input id="profileName" type="text" maxlength="60" autocomplete="name" placeholder="Ex.: Maria Souza" required>
+        </div>
+
+        <div class="field">
+          <label for="profileEmail">E-mail</label>
+          <input id="profileEmail" type="email" readonly>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label for="profileApartment">Nº do apartamento</label>
+            <input id="profileApartment" type="text" maxlength="20" placeholder="Ex.: 101">
+          </div>
+          <div class="field">
+            <label for="profileBlock">Bloco</label>
+            <input id="profileBlock" type="text" maxlength="20" placeholder="Ex.: A">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="profilePhone">Telefone</label>
+          <input id="profilePhone" type="tel" maxlength="30" inputmode="tel" placeholder="(11) 99999-0000">
+        </div>
+      </form>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--ghost" data-close>Fechar</button>
+        <button id="profileSubmit" type="submit" form="profileForm" class="btn btn--primary">Salvar meus dados</button>
+      </div>
+
+      <div class="profile-danger">
+        <h3>Excluir conta</h3>
+        <p>Apaga sua conta, seu perfil e todas as suas reservas. Esta ação não pode ser desfeita.</p>
+        <button id="profileDelete" class="btn btn--danger" type="button">Excluir minha conta</button>
       </div>
     </div>
   </div>

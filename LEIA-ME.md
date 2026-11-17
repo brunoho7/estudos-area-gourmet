@@ -33,6 +33,8 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 **Quem pode cancelar:** somente o morador que fez a reserva. A interface esconde o botão para os demais, e o banco também bloqueia a operação.
 
+**Meu perfil:** no cabeçalho, o botão **Perfil** abre os dados do morador (nome, nº do apartamento, bloco e telefone). É possível editar, salvar e, se quiser, excluir a própria conta — a exclusão apaga perfil, reservas e o usuário do Auth.
+
 **Privacidade:** nomes e apartamentos são visíveis apenas para usuários logados.
 
 ---
@@ -40,6 +42,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 ## O que o aplicativo faz
 
 - Cadastro, confirmação de e-mail e login.
+- **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
 - Clique em um dia livre para reservar (apartamento, telefone opcional, nº de pessoas e observações).
@@ -57,7 +60,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 | Onde | O que fica |
 | --- | --- |
 | Supabase → `auth.users` | Contas (e-mail e senha criptografada) |
-| Supabase → `public.profiles` | Nome e e-mail de cada morador |
+| Supabase → `public.profiles` | Nome, e-mail, apartamento, bloco e telefone de cada morador |
 | Supabase → `public.reservations` | Reservas, vinculadas ao usuário (`user_id`) |
 | `data/reservations.json` | Apenas o servidor local opcional (`server.js`) |
 
@@ -74,6 +77,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 - Limite de **40 pessoas** por reserva.
 - Sem controle de horário: a reserva é para o dia inteiro.
+- A exclusão da conta é definitiva e apaga também as reservas do morador.
 
 ---
 
@@ -88,7 +92,8 @@ agendamento-area-gourmet/
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase
 ├── supabase/
-│   └── schema.sql              Tabelas, perfis, RLS e funções
+│   ├── schema.sql              Tabelas, perfis, RLS e funções
+│   └── migration-perfil.sql    Campos de perfil para bancos já existentes
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── README.md                   Visão geral para o GitHub
@@ -118,6 +123,8 @@ agendamento-area-gourmet/
 | E-mail de confirmação não chega | Confirme a Site URL em Authentication → URL Configuration; o plano gratuito do Supabase tem limite de envios por hora. |
 | “E-mail ou senha incorretos” | Confira a senha; o síndico pode redefini-la em Authentication → Users. |
 | “Este e-mail já está cadastrado” | Use **Entrar** ou recupere a senha pelo painel do Supabase. |
+| “Módulo de perfil ainda não foi ativado” | Execute `supabase/migration-perfil.sql` no SQL Editor do Supabase. |
+| Dados do perfil não salvam | Confirme se o SQL de perfil foi executado e se o morador está logado. |
 | Site publicado abre em “Modo local” | O `config.js` está vazio ou a página foi aberta como arquivo (`file://`). Use o link publicado. |
 | Calendário vazio para todos | Verifique se o projeto do Supabase está ativo (não pausado). |
 | Morador não consegue cancelar | Só o dono da reserva pode cancelar; confirme se ele está na conta correta. |

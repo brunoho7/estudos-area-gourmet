@@ -40,6 +40,8 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 **Meus documentos:** na barra lateral, o painel **Meus documentos** permite enviar até **2 arquivos** (PDF, JPG, PNG, WEBP, TXT, DOC/DOCX ou XLS/XLSX, até 10 MB), baixar, renomear, substituir e excluir. O administrador tem uma aba **Todos** e pode baixar os documentos de qualquer morador.
 
+**Previsão do tempo:** ao abrir uma nova reserva ou os detalhes de uma data futura, aparece um cartão com a previsão do dia (máxima/mínima, chuva e vento), usando a API gratuita **Open-Meteo**. A previsão cobre os próximos 16 dias; para datas mais distantes, o app avisa a partir de quando ela estará disponível.
+
 **Privacidade:** nomes e apartamentos são visíveis apenas para usuários logados.
 
 ---
@@ -51,6 +53,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - **Painel de administração** (somente administradores): aprovar, recusar, promover/rebaixar usuários.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - **Meus documentos:** até 2 arquivos no Supabase Storage, com CRUD; administrador vê todos.
+- **Previsão do tempo:** cartão com máxima/mínima, chuva e vento para a data da reserva, via Open-Meteo.
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
 - Clique em um dia livre para reservar (apartamento, telefone opcional, nº de pessoas e observações).
@@ -86,6 +89,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - Contas que já existiam antes da migração foram aprovadas automaticamente para não perderem o acesso.
 - A exclusão da conta é definitiva e apaga também reservas e documentos do morador.
 - Documentos: máximo de **2 por morador**, 10 MB por arquivo, formatos PDF, JPG, PNG, WEBP, TXT, DOC/DOCX e XLS/XLSX. O administrador vê os de todos.
+- Previsão do tempo: até **16 dias**, dados do Open-Meteo, com atribuição no cartão; não inclui alertas de eventos severos.
 - Não há recuperação de senha na interface; o administrador pode redefinir em **Authentication → Users**.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 - Limite de **40 pessoas** por reserva.
@@ -102,6 +106,7 @@ agendamento-area-gourmet/
 ├── assets/
 │   ├── styles.css              Visual do aplicativo
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
+│   ├── weather.js              Previsão do tempo (Open-Meteo)
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase
 ├── supabase/
 │   ├── schema.sql              Tabelas, perfis, RLS, aprovação, administração e documentos
@@ -124,6 +129,7 @@ agendamento-area-gourmet/
 - **Regras exibidas:** edite a seção “Como funciona” em `index.html`.
 - **Cores e fontes:** variáveis no início de `assets/styles.css` (`:root`).
 - **Limite de pessoas:** ajuste `MAX_GUESTS` em `assets/app.js` e em `supabase/schema.sql` (e execute o SQL de novo).
+- **Localização da previsão:** edite `weather` no `config.js` (latitude, longitude, fuso e nome da cidade). Use coordenadas aproximadas do condomínio.
 - **Cadastro fechado:** Supabase → Authentication → Providers → Email → desmarque “Allow new users to sign up”.
 - **Domínio próprio:** GitHub Pages permite configurar um domínio; depois atualize a Site URL no Supabase.
 
@@ -145,6 +151,7 @@ agendamento-area-gourmet/
 | “Bucket documentos ainda não foi criado” | Execute `supabase/migration-documentos.sql` no SQL Editor. |
 | “Você já possui 2 documentos” | O limite é 2 por morador; exclua um documento para enviar outro. |
 | Documento não aparece para o morador | Confirme se o upload terminou e se o SQL de documentos foi executado; recarregue a página. |
+| Previsão do tempo não aparece | Confira o bloco `weather` no `config.js`, se a data está nos próximos 16 dias e se a API Open-Meteo está acessível. |
 | Site publicado abre em “Modo local” | O `config.js` está vazio ou a página foi aberta como arquivo (`file://`). Use o link publicado. |
 | Calendário vazio para todos | Verifique se o projeto do Supabase está ativo (não pausado). |
 | Morador não consegue cancelar | Só o dono da reserva pode cancelar; confirme se ele está na conta correta. |
@@ -161,9 +168,7 @@ O `iniciar.bat`/`server.js` servem a mesma versão web (com login) quando o `con
 
 ## Próximos passos possíveis
 
-- Aprovação de cadastro pelo síndico.
 - Recuperação de senha (“Esqueci minha senha”).
-- Painel do síndico para gerenciar moradores e reservas.
 - Reserva por período (almoço, jantar, dia inteiro).
 - Notificações por e-mail/WhatsApp.
 - Domínio próprio.

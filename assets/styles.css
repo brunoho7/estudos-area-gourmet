@@ -1330,8 +1330,71 @@ button, input, select, textarea { font-family: inherit; }
 .date-banner strong { display: block; font-size: 13.5px; font-weight: 650; }
 .date-banner span { display: block; margin-top: 2px; font-size: 11.5px; color: var(--muted); }
 
-.booking-hint {
+/* Previsão do tempo (Open-Meteo) */
+.weather-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
   margin: -6px 0 14px;
+  padding: 11px 13px;
+  border: 1px solid #dce8e0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f4faf6, #fbf8f1);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.weather-card--loading {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.weather-card__icon {
+  flex: none;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.weather-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.weather-card__title {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.weather-card__main {
+  margin: 2px 0 0;
+  color: #3f5548;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.weather-card__meta {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.weather-card__credit {
+  flex: none;
+  align-self: flex-start;
+  margin-left: auto;
+  color: #7d8b82;
+  font-size: 9.5px;
+  text-decoration: underline;
+}
+
+.weather-card__credit:hover { color: var(--green-700); }
+
+.booking-hint {
+  margin: 0 0 14px;
   padding: 9px 11px;
   border: 1px solid #d7e8dc;
   border-radius: 10px;
@@ -1647,6 +1710,8 @@ button, input, select, textarea { font-family: inherit; }
   .admin-user { padding: 11px 12px; }
   .documents-toolbar .btn { flex: 1; }
   .documents-limit { width: 100%; text-align: center; }
+  .weather-card { gap: 9px; padding: 10px 11px; }
+  .weather-card__credit { align-self: flex-end; }
 }
 
 @media (prefers-reduced-motion: reduce) {

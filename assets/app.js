@@ -233,6 +233,7 @@
     fNotes: document.getElementById('fNotes'),
     bookingProfileHint: document.getElementById('bookingProfileHint'),
     bookingDateLong: document.getElementById('bookingDateLong'),
+    bookingWeather: document.getElementById('bookingWeather'),
     bookingSubmit: document.getElementById('bookingSubmit'),
     calendarGrid: document.getElementById('calendarGrid'),
     monthLabel: document.getElementById('monthLabel'),
@@ -249,6 +250,7 @@
     dWeekday: document.getElementById('dWeekday'),
     dFull: document.getElementById('dFull'),
     detailRows: document.getElementById('detailRows'),
+    detailWeather: document.getElementById('detailWeather'),
     detailNotes: document.getElementById('detailNotes'),
     cancelZone: document.getElementById('cancelZone'),
     cancelHint: document.getElementById('cancelHint'),
@@ -632,6 +634,9 @@
     state.activeDate = iso;
     state.activeId = null;
     el.bookingDateLong.textContent = fmtLong(iso);
+
+    if (window.Weather) window.Weather.render(el.bookingWeather, iso);
+
     hideFormError();
     el.fGuests.value = '10';
     el.fNotes.value = '';
@@ -722,6 +727,8 @@
     }
 
     setBusy(el.cancelBtn, false, 'Cancelar esta reserva');
+
+    if (window.Weather) window.Weather.render(el.detailWeather, reservation.date);
 
     openOverlay('details');
     setTimeout(() => {

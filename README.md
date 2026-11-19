@@ -32,6 +32,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 - **Painel de administração** (visível apenas para administradores) para aprovar, recusar e definir papéis.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
 - **Meus documentos:** até 2 arquivos no Supabase Storage, com envio, download, renomeação, substituição e exclusão; o administrador vê os de todos.
+- **Previsão do tempo:** ao abrir uma reserva ou os detalhes de uma data futura, o app mostra a previsão do dia via Open-Meteo (até 16 dias).
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
 - Uma reserva por dia; datas passadas bloqueadas.
@@ -55,6 +56,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ├── assets/
 │   ├── styles.css              Visual
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
+│   ├── weather.js              Previsão do tempo (Open-Meteo)
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase (v2)
 ├── supabase/
 │   ├── schema.sql              Tabelas, perfis, RLS, aprovação, administração e documentos
@@ -80,9 +82,24 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ```js
 window.APP_CONFIG = {
   supabaseUrl: 'https://SEU-PROJETO.supabase.co',
-  supabaseAnonKey: 'SUA-CHAVE-PUBLISHABLE'
+  supabaseAnonKey: 'SUA-CHAVE-PUBLISHABLE',
+  weather: {
+    latitude: -23.5505,
+    longitude: -46.6333,
+    timezone: 'America/Sao_Paulo',
+    label: 'São Paulo'
+  }
 };
 ```
+
+## Previsão do tempo
+
+A previsão usa a API **Open-Meteo**, sem chave e sem backend. Ajuste `weather` no [`config.js`](config.js) para as coordenadas aproximadas do condomínio. O app consulta uma vez os próximos 16 dias, guarda em cache por 30 minutos e mostra o cartão na reserva e nos detalhes.
+
+- Datas além dos 16 dias mostram “previsão ainda não disponível”, com a data a partir da qual ela aparece.
+- Falhas da API não bloqueiam a reserva.
+- A atribuição **Open-Meteo** é obrigatória e aparece no cartão.
+- O plano gratuito é para uso não comercial; para uso comercial, consulte os planos da Open-Meteo.
 
 ## Rodar localmente
 
@@ -96,8 +113,8 @@ Com o `config.js` preenchido, o `iniciar.bat`/`server.js` servem a mesma versão
 - O administrador é definido pelo e-mail **brunosilveira@grupoemon.com.br**. Se ainda não houver conta com esse e-mail, crie uma em **Criar conta**; ela nasce como administrador.
 - A exclusão da conta é definitiva: apaga perfil, reservas, documentos e o usuário do Supabase Auth.
 - Documentos: máximo de **2 por morador**, 10 MB por arquivo, formatos PDF, JPG, PNG, WEBP, TXT, DOC/DOCX e XLS/XLSX.
+- Previsão do tempo limitada aos próximos **16 dias**; não é uma promessa meteorológica e não inclui alertas de eventos severos.
 - Não há recuperação de senha na interface (pode ser adicionada com o Supabase Auth).
-- Não há painel de administração.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 
 ## Atualizar o site

@@ -12,5 +12,14 @@
  */
 window.APP_CONFIG = {
   supabaseUrl: 'https://sbsjjdpvxalpgnbaqkke.supabase.co',
-  supabaseAnonKey: 'sb_publishable_tepDqVbvLxQ-gUTP3CAmwQ_219fY_EW'
+  supabaseAnonKey: 'sb_publishable_tepDqVbvLxQ-gUTP3CAmwQ_219fY_EW',
+
+  // Previsão do tempo (Open-Meteo). Ajuste para a cidade/bairro do condomínio.
+  // Use coordenadas aproximadas; não é necessário o endereço exato.
+  weather: {
+    latitude: -23.5505,
+    longitude: -46.6333,
+    timezone: 'America/Sao_Paulo',
+    label: 'São Paulo'
+  }
 };

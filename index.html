@@ -7,7 +7,7 @@
   <meta name="description" content="Agendamento da área gourmet do condomínio: veja os dias livres, reserve e cancele sua reserva.">
   <meta name="theme-color" content="#143d2e">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23143d2e'/><path d='M35 24v22a8 8 0 0 0 8 8h0a8 8 0 0 0 8-8V24M43 54v24' stroke='%23f0c9a8' stroke-width='6' stroke-linecap='round' fill='none'/><path d='M68 24c-8 12-8 24 0 30v24' stroke='%23f0c9a8' stroke-width='6' stroke-linecap='round' fill='none'/></svg>">
-  <link rel="stylesheet" href="assets/styles.css?v=20261119-2">
+  <link rel="stylesheet" href="assets/styles.css?v=20261119-3">
 </head>
 <body>
   <div id="bootScreen" class="boot-screen">
@@ -218,7 +218,7 @@
     </main>
 
     <footer class="footer">
-      <span>Área Gourmet · Agendamento do condomínio · v2026-11-19.2</span>
+      <span>Área Gourmet · Agendamento do condomínio · v2026-11-19.3</span>
       <span id="footerData">Dados salvos em <code>data/reservations.json</code></span>
     </footer>
   </div>
@@ -244,6 +244,8 @@
           <span>Confira a data e preencha os dados abaixo.</span>
         </div>
       </div>
+
+      <div id="bookingWeather" class="weather-card" aria-live="polite" hidden></div>
 
       <p id="bookingProfileHint" class="booking-hint" hidden></p>
 
@@ -306,6 +308,8 @@
           <p class="detail-date__full" id="dFull">—</p>
         </div>
       </div>
+
+      <div id="detailWeather" class="weather-card" aria-live="polite" hidden></div>
 
       <div id="detailRows" class="detail-list"></div>
       <div id="detailNotes" class="notes" hidden></div>
@@ -437,8 +441,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="assets/vendor/supabase.js?v=20261119-2"></script>
-  <script src="config.js?v=20261119-2"></script>
-  <script src="assets/app.js?v=20261119-2"></script>
+  <script src="assets/vendor/supabase.js?v=20261119-3"></script>
+  <script src="config.js?v=20261119-3"></script>
+  <script src="assets/weather.js?v=20261119-3"></script>
+  <script src="assets/app.js?v=20261119-3"></script>
 </body>
 </html>

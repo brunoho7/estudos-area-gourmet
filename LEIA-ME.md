@@ -36,7 +36,9 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 
 **Quem pode cancelar:** somente o morador que fez a reserva. A interface esconde o botão para os demais, e o banco também bloqueia a operação.
 
-**Meu perfil:** no cabeçalho, o botão **Perfil** abre os dados do morador (nome, nº do apartamento, bloco e telefone). É possível editar, salvar e, se quiser, excluir a própria conta — a exclusão apaga perfil, reservas e o usuário do Auth. Ao abrir uma nova reserva, esses dados são preenchidos automaticamente.
+**Meu perfil:** no cabeçalho, o botão **Perfil** abre os dados do morador (nome, nº do apartamento, bloco e telefone). É possível editar, salvar e, se quiser, excluir a própria conta — a exclusão apaga perfil, reservas, documentos e o usuário do Auth. Ao abrir uma nova reserva, esses dados são preenchidos automaticamente.
+
+**Meus documentos:** na barra lateral, o painel **Meus documentos** permite enviar até **2 arquivos** (PDF, JPG, PNG, WEBP, TXT, DOC/DOCX ou XLS/XLSX, até 10 MB), baixar, renomear, substituir e excluir. O administrador tem uma aba **Todos** e pode baixar os documentos de qualquer morador.
 
 **Privacidade:** nomes e apartamentos são visíveis apenas para usuários logados.
 
@@ -48,6 +50,7 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - **Aprovação de moradores:** novo cadastro fica pendente até o administrador aprovar.
 - **Painel de administração** (somente administradores): aprovar, recusar, promover/rebaixar usuários.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
+- **Meus documentos:** até 2 arquivos no Supabase Storage, com CRUD; administrador vê todos.
 - Calendário mensal com navegação entre meses e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com o nome do responsável e o apartamento.
 - Clique em um dia livre para reservar (apartamento, telefone opcional, nº de pessoas e observações).
@@ -67,6 +70,8 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 | --- | --- |
 | Supabase → `auth.users` | Contas (e-mail e senha criptografada) |
 | Supabase → `public.profiles` | Nome, e-mail, apartamento, bloco, telefone, papel (`admin`/`resident`) e status (`pending`/`approved`/`rejected`) |
+| Supabase → `public.documents` | Metadados dos documentos (dono, nome, caminho, tamanho) |
+| Supabase Storage → `documentos` | Arquivos propriamente ditos (bucket privado) |
 | Supabase → `public.reservations` | Reservas, vinculadas ao usuário (`user_id`) |
 | `data/reservations.json` | Apenas o servidor local opcional (`server.js`) |
 
@@ -79,7 +84,8 @@ C:\Users\bruno\OneDrive\Documentos\deepseek-harness\default-workspace\agendament
 - O cadastro está **aberto**, mas todo novo usuário entra como **pendente** e só acessa após aprovação do administrador.
 - O administrador é **brunosilveira@grupoemon.com.br**. Para esse e-mail, o cadastro já nasce aprovado como administrador.
 - Contas que já existiam antes da migração foram aprovadas automaticamente para não perderem o acesso.
-- A exclusão da conta é definitiva e apaga também as reservas do morador.
+- A exclusão da conta é definitiva e apaga também reservas e documentos do morador.
+- Documentos: máximo de **2 por morador**, 10 MB por arquivo, formatos PDF, JPG, PNG, WEBP, TXT, DOC/DOCX e XLS/XLSX. O administrador vê os de todos.
 - Não há recuperação de senha na interface; o administrador pode redefinir em **Authentication → Users**.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.
 - Limite de **40 pessoas** por reserva.
@@ -98,9 +104,10 @@ agendamento-area-gourmet/
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase
 ├── supabase/
-│   ├── schema.sql              Tabelas, perfis, RLS, aprovação e administração
+│   ├── schema.sql              Tabelas, perfis, RLS, aprovação, administração e documentos
 │   ├── migration-perfil.sql    Campos de perfil para bancos já existentes
-│   └── migration-admin.sql     Papéis e aprovação para bancos já existentes
+│   ├── migration-admin.sql     Papéis e aprovação para bancos já existentes
+│   └── migration-documentos.sql Bucket e políticas dos documentos
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── README.md                   Visão geral para o GitHub
@@ -135,6 +142,9 @@ agendamento-area-gourmet/
 | Não aparece o painel **Administração** | Entre com o e-mail de administrador (`brunosilveira@grupoemon.com.br`) e confirme se o SQL de administração foi executado. |
 | “Acesso não autorizado” | O administrador recusou o cadastro; ele pode aprovar novamente no painel. |
 | Perfil não salva | Confirme se os SQLs de perfil e administração foram executados e se o morador está logado. |
+| “Bucket documentos ainda não foi criado” | Execute `supabase/migration-documentos.sql` no SQL Editor. |
+| “Você já possui 2 documentos” | O limite é 2 por morador; exclua um documento para enviar outro. |
+| Documento não aparece para o morador | Confirme se o upload terminou e se o SQL de documentos foi executado; recarregue a página. |
 | Site publicado abre em “Modo local” | O `config.js` está vazio ou a página foi aberta como arquivo (`file://`). Use o link publicado. |
 | Calendário vazio para todos | Verifique se o projeto do Supabase está ativo (não pausado). |
 | Morador não consegue cancelar | Só o dono da reserva pode cancelar; confirme se ele está na conta correta. |

@@ -11,6 +11,20 @@
     'Quinta-feira', 'Sexta-feira', 'Sábado'
   ];
   const MAX_GUESTS = 40;
+  const DOCUMENT_LIMIT = 2;
+  const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+  const DOCUMENT_MIME = {
+    pdf: 'application/pdf',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    txt: 'text/plain',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  };
   const KEY_USER = 'areaGourmet.usuario.v1';
   const KEY_LOCAL = 'areaGourmet.reservas.v1';
 
@@ -134,6 +148,10 @@
     profile: null,
     adminFilter: 'pending',
     adminUsers: [],
+    documents: [],
+    documentsView: 'mine',
+    documentsLoading: false,
+    replaceDocId: null,
     activeDate: null,
     activeId: null,
     busy: false
@@ -179,6 +197,19 @@
     adminRefresh: document.getElementById('adminRefresh'),
     adminError: document.getElementById('adminError'),
     adminUserList: document.getElementById('adminUserList'),
+    documentsPanel: document.getElementById('documentsPanel'),
+    documentsBtn: document.getElementById('documentsBtn'),
+    documentsModal: document.getElementById('documentsModal'),
+    documentsTitle: document.getElementById('documentsTitle'),
+    documentsAdminTabs: document.getElementById('documentsAdminTabs'),
+    documentsMineTab: document.getElementById('documentsMineTab'),
+    documentsAllTab: document.getElementById('documentsAllTab'),
+    documentFile: document.getElementById('documentFile'),
+    documentReplaceFile: document.getElementById('documentReplaceFile'),
+    documentUploadBtn: document.getElementById('documentUploadBtn'),
+    documentsLimit: document.getElementById('documentsLimit'),
+    documentsError: document.getElementById('documentsError'),
+    documentsList: document.getElementById('documentsList'),
     profileModal: document.getElementById('profileModal'),
     profileForm: document.getElementById('profileForm'),
     profileError: document.getElementById('profileError'),
@@ -546,6 +577,7 @@
     el.detailsModal.hidden = which !== 'details';
     el.profileModal.hidden = which !== 'profile';
     el.adminModal.hidden = which !== 'admin';
+    el.documentsModal.hidden = which !== 'documents';
     document.body.classList.add('modal-open');
   }
 
@@ -556,6 +588,7 @@
     el.detailsModal.hidden = true;
     el.profileModal.hidden = true;
     el.adminModal.hidden = true;
+    el.documentsModal.hidden = true;
     document.body.classList.remove('modal-open');
     state.activeDate = null;
     state.activeId = null;
@@ -852,6 +885,20 @@
     el.profileDelete.textContent = 'Excluindo…';
 
     try {
+      try {
+        const { data: documents } = await supabaseClient()
+          .from('documents')
+          .select('storage_path');
+
+        if (documents && documents.length) {
+          await authClient.storage
+            .from('documentos')
+            .remove(documents.map((doc) => doc.storage_path));
+        }
+      } catch (err) {
+        /* segue com a exclusão da conta mesmo se o storage falhar */
+      }
+
       const { error } = await supabaseClient().rpc('delete_my_account');
       if (error) throw error;
 
@@ -1118,6 +1165,7 @@
       el.userBox.hidden = true;
     }
     updateAdminVisibility();
+    updateDocumentsVisibility();
   }
 
   function showAuthGate() {
@@ -1127,6 +1175,7 @@
     el.approvalGate.hidden = true;
     el.userBox.hidden = true;
     el.adminPanel.hidden = true;
+    el.documentsPanel.hidden = true;
     state.profile = null;
     state.adminUsers = [];
     if (pollingTimer) {
@@ -1147,6 +1196,7 @@
     el.approvalGate.hidden = false;
     el.userBox.hidden = true;
     el.adminPanel.hidden = true;
+    el.documentsPanel.hidden = true;
 
     if (pollingTimer) {
       clearInterval(pollingTimer);
@@ -1383,6 +1433,419 @@
     });
   }
 
+  /* ---------------- Documentos ---------------- */
+
+  function isApprovedUser() {
+    return !!(state.user && state.profile && state.profile.status === 'approved');
+  }
+
+  function updateDocumentsVisibility() {
+    el.documentsPanel.hidden = !isApprovedUser();
+  }
+
+  function documentExtension(name) {
+    const parts = String(name || '').toLowerCase().split('.');
+    return parts.length > 1 ? parts.pop() : '';
+  }
+
+  function documentMime(file) {
+    const ext = documentExtension(file.name);
+    return DOCUMENT_MIME[ext] || file.type || 'application/octet-stream';
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes) || 0;
+    if (value < 1024) return `${value} B`;
+    if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+    return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function newDocumentId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  function validateDocumentFile(file) {
+    if (!file) return 'Selecione um arquivo.';
+    if (!file.size) return 'O arquivo está vazio.';
+    if (file.size > DOCUMENT_MAX_BYTES) return 'O arquivo deve ter no máximo 10 MB.';
+    const ext = documentExtension(file.name);
+    if (!DOCUMENT_MIME[ext]) {
+      return 'Formato não aceito. Use PDF, JPG, PNG, WEBP, TXT, DOC/DOCX ou XLS/XLSX.';
+    }
+    return null;
+  }
+
+  function documentsErrorMessage(error) {
+    const message = String((error && error.message) || '');
+    const code = String((error && (error.code || error.error_code)) || '');
+
+    if (/bucket not found/i.test(message)) {
+      return 'O bucket "documentos" ainda não foi criado. Execute o SQL de documentos no Supabase.';
+    }
+    if (/row-level security|permission denied|42501/i.test(message) || code === '42501') {
+      return 'Você não tem permissão para esta operação com documentos.';
+    }
+    if (/já possui 2 documentos/i.test(message)) return message;
+    if (/payload too large|file size|too large|mime type/i.test(message)) {
+      return 'Arquivo inválido ou acima do limite de 10 MB.';
+    }
+    if (/duplicate key/i.test(message)) {
+      return 'Este documento já foi registrado. Tente novamente.';
+    }
+    return message || 'Não foi possível concluir a operação com documentos.';
+  }
+
+  function showDocumentsError(message) {
+    el.documentsError.textContent = message;
+    el.documentsError.hidden = false;
+  }
+
+  function hideDocumentsError() {
+    el.documentsError.textContent = '';
+    el.documentsError.hidden = true;
+  }
+
+  function updateDocumentsUI() {
+    if (!el.documentsModal) return;
+
+    const admin = isAdminUser();
+    const mineView = state.documentsView === 'mine';
+
+    el.documentsAdminTabs.hidden = !admin;
+    el.documentsTitle.textContent = mineView ? 'Meus documentos' : 'Documentos dos moradores';
+
+    el.documentsMineTab.classList.toggle('is-active', mineView);
+    el.documentsAllTab.classList.toggle('is-active', !mineView);
+    el.documentsMineTab.setAttribute('aria-selected', mineView ? 'true' : 'false');
+    el.documentsAllTab.setAttribute('aria-selected', mineView ? 'false' : 'true');
+
+    const mineCount = mineView
+      ? state.documents.length
+      : state.documents.filter((doc) => doc.user_id === state.user.id).length;
+
+    el.documentUploadBtn.hidden = !mineView;
+    el.documentUploadBtn.disabled = state.documentsLoading || !mineView || mineCount >= DOCUMENT_LIMIT;
+    el.documentUploadBtn.textContent = state.documentsLoading ? 'Aguarde…' : 'Enviar documento';
+
+    if (mineView) {
+      el.documentsLimit.textContent = mineCount >= DOCUMENT_LIMIT
+        ? `${mineCount} de ${DOCUMENT_LIMIT} documentos · limite atingido`
+        : `${mineCount} de ${DOCUMENT_LIMIT} documentos`;
+    } else {
+      el.documentsLimit.textContent = `${state.documents.length} documento${state.documents.length === 1 ? '' : 's'} no total`;
+    }
+  }
+
+  function renderDocuments() {
+    if (!state.documents.length) {
+      el.documentsList.innerHTML = `<p class="document-empty">${
+        state.documentsView === 'all'
+          ? 'Nenhum documento enviado pelos moradores.'
+          : 'Você ainda não enviou documentos.<br>Envie até 2 arquivos para o condomínio.'
+      }</p>`;
+      return;
+    }
+
+    el.documentsList.innerHTML = state.documents.map((doc) => {
+      const mine = doc.user_id === state.user.id;
+      const ext = documentExtension(doc.name).toUpperCase() || 'ARQ';
+      const owner = doc.owner ? (doc.owner.name || doc.owner.email) : '';
+      const meta = [
+        formatBytes(doc.size_bytes),
+        fmtDateTime(doc.created_at),
+        state.documentsView === 'all' && owner ? `Enviado por ${owner}` : ''
+      ].filter(Boolean).join(' · ');
+
+      const actions = [
+        `<button class="btn btn--ghost btn--xs" type="button" data-doc-action="download" data-id="${esc(doc.id)}">Baixar</button>`
+      ];
+
+      if (mine) {
+        actions.push(`<button class="btn btn--ghost btn--xs" type="button" data-doc-action="rename" data-id="${esc(doc.id)}">Renomear</button>`);
+        actions.push(`<button class="btn btn--ghost btn--xs" type="button" data-doc-action="replace" data-id="${esc(doc.id)}">Substituir</button>`);
+      }
+
+      if (mine || (isAdminUser() && state.documentsView === 'all')) {
+        actions.push(`<button class="btn btn--danger btn--xs" type="button" data-doc-action="delete" data-id="${esc(doc.id)}">Excluir</button>`);
+      }
+
+      return `<article class="document-card">
+        <div class="document-type">${esc(ext)}</div>
+        <div>
+          <div class="document-card__name">${esc(doc.name)}</div>
+          <div class="document-card__meta">${esc(meta)}</div>
+        </div>
+        <div class="document-card__actions">${actions.join('')}</div>
+      </article>`;
+    }).join('');
+  }
+
+  async function loadDocuments() {
+    if (!state.user || !isApprovedUser()) return;
+
+    hideDocumentsError();
+    state.documentsLoading = true;
+    el.documentsList.innerHTML = '<p class="document-empty">Carregando documentos…</p>';
+    updateDocumentsUI();
+
+    try {
+      const { data, error } = await supabaseClient()
+        .from('documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      let documents = data || [];
+
+      if (state.documentsView === 'all' && isAdminUser() && documents.length) {
+        const { data: profiles } = await supabaseClient()
+          .from('profiles')
+          .select('id,name,email');
+
+        const byId = new Map((profiles || []).map((profile) => [profile.id, profile]));
+        documents = documents.map((doc) => Object.assign({}, doc, {
+          owner: byId.get(doc.user_id) || null
+        }));
+      }
+
+      state.documents = documents;
+    } catch (err) {
+      state.documents = [];
+      showDocumentsError(documentsErrorMessage(err));
+    } finally {
+      state.documentsLoading = false;
+      renderDocuments();
+      updateDocumentsUI();
+    }
+  }
+
+  async function openDocuments() {
+    if (!isApprovedUser()) {
+      toast('Acesso disponível apenas para moradores aprovados.', 'warn');
+      return;
+    }
+
+    state.documentsView = 'mine';
+    state.replaceDocId = null;
+    state.documents = [];
+    hideDocumentsError();
+    openOverlay('documents');
+    updateDocumentsUI();
+    await loadDocuments();
+  }
+
+  async function setDocumentsView(view) {
+    if (view === 'all' && !isAdminUser()) return;
+    state.documentsView = view;
+    state.documents = [];
+    hideDocumentsError();
+    updateDocumentsUI();
+    await loadDocuments();
+  }
+
+  async function uploadNewDocument(file) {
+    if (state.documentsLoading) return;
+
+    const problem = validateDocumentFile(file);
+    if (problem) {
+      showDocumentsError(problem);
+      return;
+    }
+
+    if (state.documents.length >= DOCUMENT_LIMIT) {
+      showDocumentsError('Você já possui 2 documentos. Exclua um para enviar outro.');
+      return;
+    }
+
+    const ext = documentExtension(file.name);
+    const mime = documentMime(file);
+    const id = newDocumentId();
+    const path = `${state.user.id}/${id}.${ext}`;
+
+    hideDocumentsError();
+    state.documentsLoading = true;
+    updateDocumentsUI();
+
+    try {
+      const { error: uploadError } = await authClient.storage
+        .from('documentos')
+        .upload(path, file, { contentType: mime, upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { error: insertError } = await supabaseClient()
+        .from('documents')
+        .insert({
+          id,
+          user_id: state.user.id,
+          name: file.name.slice(0, 120),
+          storage_path: path,
+          mime_type: mime,
+          size_bytes: file.size
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        try {
+          await authClient.storage.from('documentos').remove([path]);
+        } catch (err) {
+          /* melhor esforço para não deixar arquivo órfão */
+        }
+        throw insertError;
+      }
+
+      toast('Documento enviado.', 'success');
+      await loadDocuments();
+    } catch (err) {
+      showDocumentsError(documentsErrorMessage(err));
+    } finally {
+      state.documentsLoading = false;
+      updateDocumentsUI();
+      el.documentFile.value = '';
+    }
+  }
+
+  async function replaceDocument(file) {
+    if (state.documentsLoading || !state.replaceDocId) return;
+
+    const document = state.documents.find((doc) => doc.id === state.replaceDocId);
+    if (!document) return;
+
+    const problem = validateDocumentFile(file);
+    if (problem) {
+      showDocumentsError(problem);
+      state.replaceDocId = null;
+      return;
+    }
+
+    const mime = documentMime(file);
+    hideDocumentsError();
+    state.documentsLoading = true;
+    updateDocumentsUI();
+
+    try {
+      const { error: uploadError } = await authClient.storage
+        .from('documentos')
+        .upload(document.storage_path, file, { contentType: mime, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { error } = await supabaseClient()
+        .from('documents')
+        .update({
+          name: file.name.slice(0, 120),
+          mime_type: mime,
+          size_bytes: file.size
+        })
+        .eq('id', document.id);
+
+      if (error) throw error;
+
+      toast('Documento substituído.', 'success');
+      await loadDocuments();
+    } catch (err) {
+      showDocumentsError(documentsErrorMessage(err));
+    } finally {
+      state.documentsLoading = false;
+      state.replaceDocId = null;
+      el.documentReplaceFile.value = '';
+      updateDocumentsUI();
+    }
+  }
+
+  async function renameDocument(document) {
+    const value = window.prompt('Novo nome do documento:', document.name);
+    if (value === null) return;
+
+    const name = value.trim();
+    if (!name) {
+      showDocumentsError('Informe um nome para o documento.');
+      return;
+    }
+    if (name.length > 120) {
+      showDocumentsError('O nome deve ter até 120 caracteres.');
+      return;
+    }
+
+    hideDocumentsError();
+    try {
+      const { error } = await supabaseClient()
+        .from('documents')
+        .update({ name })
+        .eq('id', document.id);
+
+      if (error) throw error;
+      toast('Documento renomeado.', 'success');
+      await loadDocuments();
+    } catch (err) {
+      showDocumentsError(documentsErrorMessage(err));
+    }
+  }
+
+  async function deleteDocument(document) {
+    if (!window.confirm(`Excluir o documento "${document.name}"?`)) return;
+
+    hideDocumentsError();
+    try {
+      const { error: storageError } = await authClient.storage
+        .from('documentos')
+        .remove([document.storage_path]);
+
+      if (storageError) throw storageError;
+
+      const { error } = await supabaseClient()
+        .from('documents')
+        .delete()
+        .eq('id', document.id);
+
+      if (error) throw error;
+      toast('Documento excluído.', 'success');
+      await loadDocuments();
+    } catch (err) {
+      showDocumentsError(documentsErrorMessage(err));
+    }
+  }
+
+  async function downloadDocument(document) {
+    hideDocumentsError();
+    try {
+      const { data, error } = await authClient.storage
+        .from('documentos')
+        .createSignedUrl(document.storage_path, 300);
+
+      if (error) throw error;
+      if (!data || !data.signedUrl) throw new Error('Não foi possível gerar o link do documento.');
+
+      window.open(data.signedUrl, '_blank', 'noopener');
+    } catch (err) {
+      showDocumentsError(documentsErrorMessage(err));
+    }
+  }
+
+  function handleDocumentAction(action, id) {
+    const document = state.documents.find((doc) => doc.id === id);
+    if (!document) return;
+
+    if (action === 'download') downloadDocument(document);
+    else if (action === 'rename') renameDocument(document);
+    else if (action === 'replace') {
+      state.replaceDocId = document.id;
+      el.documentReplaceFile.value = '';
+      el.documentReplaceFile.click();
+    } else if (action === 'delete') {
+      deleteDocument(document);
+    }
+  }
+
   /* ---------------- Administração de usuários ---------------- */
 
   function showAdminError(message) {
@@ -1581,6 +2044,30 @@
       const button = event.target.closest('button[data-admin-action]');
       if (!button) return;
       handleAdminAction(button.dataset.adminAction, button.dataset.id);
+    });
+
+    el.documentsBtn.addEventListener('click', openDocuments);
+    el.documentUploadBtn.addEventListener('click', () => {
+      if (state.documentsView !== 'mine' || state.documentsLoading) return;
+      el.documentFile.value = '';
+      el.documentFile.click();
+    });
+    el.documentFile.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (file) uploadNewDocument(file);
+    });
+    el.documentReplaceFile.addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (file) replaceDocument(file);
+    });
+    el.documentsMineTab.addEventListener('click', () => setDocumentsView('mine'));
+    el.documentsAllTab.addEventListener('click', () => setDocumentsView('all'));
+    el.documentsList.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-doc-action]');
+      if (!button) return;
+      handleDocumentAction(button.dataset.docAction, button.dataset.id);
     });
 
     document.addEventListener('click', (event) => {

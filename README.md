@@ -16,7 +16,9 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 - Todo novo cadastro nasce como **morador pendente** e só entra depois da aprovação do administrador.
 - O administrador é **brunosilveira@grupoemon.com.br**.
 - Cada morador pode editar no **Meu perfil**: nome, nº do apartamento, bloco e telefone.
-- Pode também **excluir a própria conta**, o que apaga perfil e reservas.
+- Cada morador pode enviar até **2 documentos** (PDF, imagens ou Office, até 10 MB) e fazer o CRUD apenas dos próprios arquivos.
+- O administrador pode ver e baixar os documentos de todos os moradores.
+- Pode também **excluir a própria conta**, o que apaga perfil, reservas e documentos.
 - Sem login, o aplicativo mostra apenas a tela de acesso — o calendário não é carregado.
 - As reservas ficam visíveis somente para usuários autenticados.
 - Cada morador pode cancelar **apenas as próprias reservas**.
@@ -29,6 +31,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 - **Aprovação de moradores** pelo administrador: pendente, aprovado ou recusado.
 - **Painel de administração** (visível apenas para administradores) para aprovar, recusar e definir papéis.
 - **Meu perfil:** nome, apartamento, bloco e telefone, com edição e exclusão da conta.
+- **Meus documentos:** até 2 arquivos no Supabase Storage, com envio, download, renomeação, substituição e exclusão; o administrador vê os de todos.
 - Calendário mensal com navegação e botão **Ir para hoje**.
 - Dias reservados aparecem em verde com nome e apartamento.
 - Uma reserva por dia; datas passadas bloqueadas.
@@ -54,9 +57,10 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 │   ├── app.js                  Autenticação, calendário, reservas e cancelamentos
 │   └── vendor/supabase.js      Biblioteca oficial do Supabase (v2)
 ├── supabase/
-│   ├── schema.sql              Tabelas, perfis, RLS, aprovação e administração
+│   ├── schema.sql              Tabelas, perfis, RLS, aprovação, administração e documentos
 │   ├── migration-perfil.sql    Campos do perfil (bancos já existentes)
-│   └── migration-admin.sql     Papéis e aprovação (bancos já existentes)
+│   ├── migration-admin.sql     Papéis e aprovação (bancos já existentes)
+│   └── migration-documentos.sql Bucket, tabela e políticas dos documentos
 ├── server.js                   Servidor local opcional (Node)
 ├── iniciar.bat                 Atalho do servidor local no Windows
 ├── LEIA-ME.md                  Manual completo em português
@@ -66,7 +70,7 @@ O acesso é restrito a usuários cadastrados: cada pessoa entra com **e-mail e s
 ## Configurar o Supabase
 
 1. Crie um projeto em <https://supabase.com>.
-2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql). Se o banco já existia antes dos campos de perfil, execute também [`supabase/migration-perfil.sql`](supabase/migration-perfil.sql); antes da aprovação/administração, execute [`supabase/migration-admin.sql`](supabase/migration-admin.sql).
+2. No **SQL Editor**, execute todo o conteúdo de [`supabase/schema.sql`](supabase/schema.sql). Se o banco já existia antes dos campos de perfil, execute também [`supabase/migration-perfil.sql`](supabase/migration-perfil.sql); antes da aprovação/administração, execute [`supabase/migration-admin.sql`](supabase/migration-admin.sql); para ativar os documentos, execute [`supabase/migration-documentos.sql`](supabase/migration-documentos.sql).
 3. Em **Project Settings > API**, copie a **Project URL** e a chave **publishable** (ou **anon public**).
 4. Em **Authentication > URL Configuration**, defina:
    - **Site URL:** `https://SEU-USUARIO.github.io/SEU-REPO/`
@@ -90,7 +94,8 @@ Com o `config.js` preenchido, o `iniciar.bat`/`server.js` servem a mesma versão
 
 - O cadastro está **aberto**, mas todo novo usuário fica **pendente** até a aprovação do administrador.
 - O administrador é definido pelo e-mail **brunosilveira@grupoemon.com.br**. Se ainda não houver conta com esse e-mail, crie uma em **Criar conta**; ela nasce como administrador.
-- A exclusão da conta é definitiva: apaga perfil, reservas e o usuário do Supabase Auth.
+- A exclusão da conta é definitiva: apaga perfil, reservas, documentos e o usuário do Supabase Auth.
+- Documentos: máximo de **2 por morador**, 10 MB por arquivo, formatos PDF, JPG, PNG, WEBP, TXT, DOC/DOCX e XLS/XLSX.
 - Não há recuperação de senha na interface (pode ser adicionada com o Supabase Auth).
 - Não há painel de administração.
 - O plano gratuito do Supabase pode pausar o projeto após uma semana sem uso; reative no painel.

@@ -22,6 +22,8 @@
 *::before,
 *::after { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -1052,7 +1054,7 @@ button, input, select, textarea { font-family: inherit; }
 }
 
 .admin-tabs {
-  width: 230px;
+  width: 290px;
   margin: 0;
 }
 
@@ -1144,6 +1146,97 @@ button, input, select, textarea { font-family: inherit; }
   line-height: 1.5;
   color: var(--muted);
   background: #fbf8f2;
+}
+
+/* ---------- Documentos ---------- */
+.documents-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.documents-limit {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f3eee4;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 48vh;
+  padding-right: 4px;
+  overflow-y: auto;
+}
+
+.document-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbf8f2;
+}
+
+.document-type {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: var(--green-100);
+  color: var(--green-700);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.document-card__name {
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.document-card__meta {
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.document-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.document-card__actions .btn {
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+
+.document-empty {
+  padding: 26px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: #fbf8f2;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
 }
 
 /* ---------- Modals ---------- */
@@ -1491,6 +1584,10 @@ button, input, select, textarea { font-family: inherit; }
   .approval-gate { padding: 16px; }
   .approval-card { padding: 30px 22px 26px; }
   .admin-list { max-height: 52vh; }
+  .documents-list { max-height: 52vh; }
+  .document-card { grid-template-columns: 40px minmax(0, 1fr); padding: 11px 12px; }
+  .document-type { width: 40px; height: 40px; border-radius: 10px; font-size: 8.5px; }
+  .document-card__actions { grid-column: 1 / -1; justify-content: flex-start; }
   .panel { padding: 16px; border-radius: 18px; }
   .calendar__nav h2 { min-width: 0; font-size: 1.02rem; }
   .calendar__head { gap: 8px; }
@@ -1548,6 +1645,8 @@ button, input, select, textarea { font-family: inherit; }
   .admin-tabs { width: 100%; }
   .admin-toolbar > .btn { width: 100%; }
   .admin-user { padding: 11px 12px; }
+  .documents-toolbar .btn { flex: 1; }
+  .documents-limit { width: 100%; text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

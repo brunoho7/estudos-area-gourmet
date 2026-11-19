@@ -888,7 +888,8 @@
       try {
         const { data: documents } = await supabaseClient()
           .from('documents')
-          .select('storage_path');
+          .select('storage_path')
+          .eq('user_id', state.user.id);
 
         if (documents && documents.length) {
           await authClient.storage
@@ -1540,7 +1541,7 @@
         ? `${mineCount} de ${DOCUMENT_LIMIT} documentos · limite atingido`
         : `${mineCount} de ${DOCUMENT_LIMIT} documentos`;
     } else {
-      el.documentsLimit.textContent = `${state.documents.length} documento${state.documents.length === 1 ? '' : 's'} no total`;
+      el.documentsLimit.textContent = `${state.documents.length} documento${state.documents.length === 1 ? '' : 's'} no total · visão do administrador`;
     }
   }
 
@@ -1557,11 +1558,17 @@
     el.documentsList.innerHTML = state.documents.map((doc) => {
       const mine = doc.user_id === state.user.id;
       const ext = documentExtension(doc.name).toUpperCase() || 'ARQ';
-      const owner = doc.owner ? (doc.owner.name || doc.owner.email) : '';
+      const owner = doc.owner
+        ? [
+            doc.owner.name || doc.owner.email,
+            doc.owner.apartment ? `Apt. ${doc.owner.apartment}` : '',
+            doc.owner.block ? `Bloco ${doc.owner.block}` : ''
+          ].filter(Boolean).join(' · ')
+        : '';
       const meta = [
         formatBytes(doc.size_bytes),
         fmtDateTime(doc.created_at),
-        state.documentsView === 'all' && owner ? `Enviado por ${owner}` : ''
+        state.documentsView === 'all' ? `Enviado por ${owner || 'morador não identificado'}` : ''
       ].filter(Boolean).join(' · ');
 
       const actions = [
@@ -1597,23 +1604,32 @@
     updateDocumentsUI();
 
     try {
-      const { data, error } = await supabaseClient()
+      let query = supabaseClient()
         .from('documents')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+
+      // "Meus documentos" deve trazer somente os arquivos do próprio usuário.
+      // O administrador tem RLS para ver todos, então o filtro é obrigatório.
+      if (state.documentsView !== 'all' || !isAdminUser()) {
+        query = query.eq('user_id', state.user.id);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       let documents = data || [];
 
       if (state.documentsView === 'all' && isAdminUser() && documents.length) {
-        const { data: profiles } = await supabaseClient()
+        const { data: profiles, error: profilesError } = await supabaseClient()
           .from('profiles')
-          .select('id,name,email');
+          .select('id,name,email,apartment,block');
 
-        const byId = new Map((profiles || []).map((profile) => [profile.id, profile]));
-        documents = documents.map((doc) => Object.assign({}, doc, {
-          owner: byId.get(doc.user_id) || null
-        }));
+        if (!profilesError) {
+          const byId = new Map((profiles || []).map((profile) => [profile.id, profile]));
+          documents = documents.map((doc) => Object.assign({}, doc, {
+            owner: byId.get(doc.user_id) || null
+          }));
+        }
       }
 
       state.documents = documents;
